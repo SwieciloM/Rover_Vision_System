@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# opencv-contrib-python
 import cv2
 import numpy as np
 import argparse
@@ -72,4 +71,3 @@ if __name__ == '__main__':
     generate_marker(args["type"], args["id"], args["sidepix"], args["borderbit"], args["no_disp"], args["no_save"], args["path"])
 
     # generate_marker('DICT_5X5_250', 10, save=True)
-
