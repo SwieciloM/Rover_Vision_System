@@ -8,40 +8,47 @@ import sys
 from constants import ARUCO_DICT
 
 
-def detect_on_image(image, dict_name=None, disp=True, show_rejected=True, show_dict=False, resize=True):
+def detect_on_image(image, dict_name=None, show_rejected=True, show_dict=False, resize=True):
     if dict_name is None:
-        # loop over the types of ArUco dictionaries
         max_spot_num = 0
         detection_results = ([], [], [])
         chosen_dict_name = ''
         display_text = 'Auto dict: '
+
+        # Loop over the types of ArUco dictionaries
         for (dict_name, dict_enum) in ARUCO_DICT.items():
-            # load the ArUCo dict_name, grab the ArUCo parameters, and attempt to detect the markers for the current dict_name
+            # Attempt to detect the markers for the current dict
             aruco_dict = cv2.aruco.Dictionary_get(dict_enum)
             aruco_params = cv2.aruco.DetectorParameters_create()
             corners, ids, rejected = cv2.aruco.detectMarkers(image, aruco_dict, parameters=aruco_params)
-            if len(corners) > max_spot_num or (max_spot_num == 0 and dict_enum == 21):
+
+            # Check if number of detected markers was greater than record
+            if len(corners) > max_spot_num:
                 max_spot_num = len(corners)
                 detection_results = (corners, ids, rejected)
-                if max_spot_num != 0:
-                    chosen_dict_name = dict_name
-            print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
+                chosen_dict_name = dict_name
+            # print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
+
+        # Final detection results
         corners, ids, rejected = detection_results
         dict_name = chosen_dict_name
+
     else:
         display_text = 'Manual dict: '
+
         # Verify that the supplied dict exist and is supported by OpenCV
         if ARUCO_DICT.get(dict_name, None) is None:
             raise ValueError("No such dict_name as '{}'".format(dict_name))
+
+        # Attempt to detect the markers for the given dict
         aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
         aruco_params = cv2.aruco.DetectorParameters_create()
         corners, ids, rejected = cv2.aruco.detectMarkers(image, aruco_dict, parameters=aruco_params)
 
     # Verify if at last one ArUCo marker was detected
     if len(corners) > 0:
-        # flatten the ArUco IDs list
         ids = ids.flatten()
-        print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
+        # print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
         # Loop over the detected ArUCo corners
         for (marker_corners, marker_id) in zip(corners, ids):
             # Extract the marker corners (top-left, top-right, bottom-right and bottom-left order)
@@ -68,7 +75,7 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=True, show_d
             print("[INFO] ArUco marker ID: {}".format(marker_id))
 
     if show_rejected:
-        # loop over the detected ArUCo corners
+        # Loop over the rejected ArUCo corners
         for fig_corners in rejected:
             # Extract the rejected marker corners (top-left, top-right, bottom-right and bottom-left order)
             corners = fig_corners.reshape((4, 2))
@@ -95,6 +102,7 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=True, show_d
         cv2.putText(image, display_text, (5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
     if resize:
+        # Resize the displayed image if oryginal image is bigger than 600x1000
         img_shape = np.shape(image)
         if img_shape[0] > 600:
             k = 600/img_shape[0]
@@ -184,11 +192,12 @@ if __name__ == '__main__':
     # args = vars(ap.parse_args())
 
     # Load the input image from disk
-    path = 'real_images//test11.jpg'
+    path = 'real_images//test1.jpg'
     dict = "DICT_4X4_50"
     image = cv2.imread(path)
 
-    detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
-    #detect_on_video("DICT_4X4_50")
+    #detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
+    detect_on_video("DICT_4X4_50")
 
-# TODO:
+# TODO: Poprawić resizing obrazów
+# TODO: Czy detektory powinny informować o wystąpieniu różnych typów słowników
