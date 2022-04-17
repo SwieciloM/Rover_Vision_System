@@ -124,10 +124,10 @@ def detect_on_image(image, dict_name=None, show_rejected=True, show_dict=False, 
     return None
 
 
-def detect_on_video(dict_name=None):
-    aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
-    aruco_params = cv2.aruco.DetectorParameters_create()
-    corners, ids, rejected = cv2.aruco.detectMarkers(image, aruco_dict, parameters=aruco_params)
+def detect_on_video(dict_name=None, show_rejected=True, show_dict=False, resize=True):
+    if dict_name is not None:
+        aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
+        aruco_params = cv2.aruco.DetectorParameters_create()
 
     cv2.namedWindow("preview")
     vc = cv2.VideoCapture(0)
@@ -140,8 +140,32 @@ def detect_on_video(dict_name=None):
         cv2.imshow("preview", frame)
         rval, frame = vc.read()
 
-        corners, ids, rejected = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
+        if dict_name is None:
+            max_spot_num = 0
+            detection_results = ([], [], [])
+            chosen_dict_name = ''
+            display_text = 'Auto dict: '
 
+            # Loop over the types of ArUco dictionaries
+            for (dict_name, dict_enum) in ARUCO_DICT.items():
+                # Attempt to detect the markers for the current dict
+                aruco_dict = cv2.aruco.Dictionary_get(dict_enum)
+                aruco_params = cv2.aruco.DetectorParameters_create()
+                corners, ids, rejected = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
+
+                # Check if number of detected markers was greater than record
+                if len(corners) > max_spot_num:
+                    max_spot_num = len(corners)
+                    detection_results = (corners, ids, rejected)
+                    chosen_dict_name = dict_name
+                # print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
+
+            # Final detection results
+            corners, ids, rejected = detection_results
+            dict_name = chosen_dict_name
+        else:
+            corners, ids, rejected = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
+        print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
         # Verify if at last one ArUCo marker was detected
         if len(corners) > 0:
             # flatten the ArUco IDs list
@@ -171,6 +195,8 @@ def detect_on_video(dict_name=None):
                 # Draw the ArUco marker ID on the image
                 cv2.putText(frame, str(marker_id), (top_left[0], top_left[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
+        dict_name = None
+
         key = cv2.waitKey(20)
         if key == 27:  # exit on ESC
             break
@@ -197,7 +223,7 @@ if __name__ == '__main__':
     image = cv2.imread(path)
 
     #detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
-    detect_on_video("DICT_4X4_50")
+    detect_on_video()
 
 # TODO: Poprawić resizing obrazów
-# TODO: Czy detektory powinny informować o wystąpieniu różnych typów słowników
+# TODO: Czy detektory powinny informować o wystąpieniu różnych typów słowników?
