@@ -3,7 +3,6 @@
 
 import cv2
 import numpy as np
-import argparse
 import sys
 from constants import ARUCO_DICT
 
@@ -12,20 +11,20 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
     """Detects & displays aruco marker on the given image.
 
     Args:
-        image ():
-        dict_name (str): Dictionary indicating the type of expected markers.
-        disp (bool):
-        show_rejected (bool): Width of the marker's border.
-        show_dict (bool): Flag specifying if
-        resize (bool): Flag specifying if
+        image (array-like): Image to be analyzed.
+        dict_name (str, optional): Indicates the type of markers that will be searched. Automatic detection if None.
+        disp (bool, optional): Determines if the result image will be displayed.
+        show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result image.
+        show_dict (bool, optional): Specifies if searched dictionary name will be displayed on the result image.
+        resize (bool, optional): Specifies if the result image will be reshaped before displaying.
 
     Returns:
-        numpy.ndarray:
-        numpy.ndarray:
-        numpy.ndarray:
+        array-like: Vector of detected marker corners. For each marker, its four corners are provided.
+        array-like: Vector of identifiers of the detected markers. The identifier is of type int
+        array-like: ImgPoints of those squares whose inner code has not a correct codification.
 
     Raises:
-        ValueError: If dictionary is not valid
+        ValueError: If given dictionary is not valid
 
     """
     if dict_name is None:
@@ -46,7 +45,6 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
                 max_spot_num = len(corners)
                 detection_results = (corners, ids, rejected)
                 chosen_dict_name = dict_name
-            # print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
 
         # Final detection results
         corners, ids, rejected = detection_results
@@ -68,11 +66,12 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
         # Verify if at last one ArUCo marker was detected
         if len(corners) > 0:
             ids = ids.flatten()
-            # print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
+
             # Loop over the detected ArUCo corners
             for (marker_corners, marker_id) in zip(corners, ids):
                 # Extract the marker corners (top-left, top-right, bottom-right and bottom-left order)
                 corners = marker_corners.reshape((4, 2))
+
                 # Convert each of the (x,y) coordinate pairs to integers
                 top_left = (int(corners[0][0]), int(corners[0][1]))
                 top_right = (int(corners[1][0]), int(corners[1][1]))
@@ -99,6 +98,7 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
             for fig_corners in rejected:
                 # Extract the rejected marker corners (top-left, top-right, bottom-right and bottom-left order)
                 corners = fig_corners.reshape((4, 2))
+
                 # Convert each of the (x,y) coordinate pairs to integers
                 top_left = (int(corners[0][0]), int(corners[0][1]))
                 top_right = (int(corners[1][0]), int(corners[1][1]))
@@ -110,11 +110,6 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
                 cv2.line(image, top_right, bottom_right, (0, 0, 255), 2)
                 cv2.line(image, bottom_right, bottom_left, (0, 0, 255), 2)
                 cv2.line(image, bottom_left, top_left, (0, 0, 255), 2)
-
-                # Compute and draw the center coordinates of the ArUco marker
-                # center_x = int((top_left[0] + bottom_right[0]) / 2)
-                # center_y = int((top_left[1] + bottom_right[1]) / 2)
-                # cv2.circle(image, (center_x, center_y), 4, (0, 0, 255), -1)
 
         if show_dict:
             # Draw the ArUco markers dict on the image
@@ -152,7 +147,25 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
     return corners, ids, rejected
 
 
-def detect_on_video(dict_name=None, show_rejected=True, show_dict=False, resize=True):
+def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show_dict=False):
+    """Detects & displays aruco marker on the video.
+
+    Args:
+        source ():
+        dict_name (str, optional): Indicates the type of markers that will be searched. Automatic detection if None.
+        disp (bool, optional): Determines if the result video will be displayed.
+        show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result video.
+        show_dict (bool, optional): Specifies if searched dictionary name will be displayed on the result video.
+
+    Returns:
+        array-like: Vector of detected marker corners. For each marker, its four corners are provided.
+        array-like: Vector of identifiers of the detected markers. The identifier is of type int
+        array-like: ImgPoints of those squares whose inner code has not a correct codification.
+
+    Raises:
+        ValueError: If given dictionary is not valid
+
+    """
     if dict_name is not None:
         aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
         aruco_params = cv2.aruco.DetectorParameters_create()
@@ -246,13 +259,12 @@ if __name__ == '__main__':
     # args = vars(ap.parse_args())
 
     # Load the input image from disk
-    path = 'real_images//test1.jpg'
+    path = 'real_images//test11.jpg'
     dict = "DICT_4X4_50"
     image = cv2.imread(path)
 
     #detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
-    detect_on_video()
+    detect_on_video(1)
 
 # TODO: Poprawić resizing obrazów w video?
 # TODO: Czy funkcje powinny zwracać także typ wykrywanych znaczników?
-# TODO: Czy detektory powinny informować o wystąpieniu wielu różnych typów słowników?
