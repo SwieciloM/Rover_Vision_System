@@ -114,7 +114,7 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
         if show_dict:
             # Draw the ArUco markers dict on the image
             display_text = display_text + str(dict_name)
-            cv2.putText(image, display_text, (5, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            cv2.putText(image, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
 
         if resize:
             max_width = 1000
@@ -245,26 +245,15 @@ def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show
     vc.release()
     cv2.destroyWindow("preview")
 
-    pass
-
 
 if __name__ == '__main__':
-    # # construct the argument parser and parse the arguments
-    # ap = argparse.ArgumentParser()
-    # ap.add_argument("-i", "--image", required=True,
-    #                 help="path to input image containing ArUCo tag")
-    # ap.add_argument("-t", "--type", type=str,
-    #                 default="DICT_ARUCO_ORIGINAL",
-    #                 help="type of ArUCo tag to detect")
-    # args = vars(ap.parse_args())
-
-    # Load the input image from disk
-    path = 'real_images//test11.jpg'
+    # Load the input image fom disk
+    path = 'real_images//test5.jpg'
     dict = "DICT_4X4_50"
     image = cv2.imread(path)
 
-    #detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
-    detect_on_video(1)
+    detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
+    #detect_on_video(1)
 
 # TODO: Poprawić resizing obrazów w video?
 # TODO: Czy funkcje powinny zwracać także typ wykrywanych znaczników?
