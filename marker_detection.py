@@ -7,7 +7,7 @@ import sys
 from constants import ARUCO_DICT
 
 
-def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_dict=False, resize=True):
+def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_dict=True, resize=True):
     """Detects & displays aruco marker on the given image.
 
     Args:
@@ -63,59 +63,12 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
         corners, ids, rejected = cv2.aruco.detectMarkers(image, aruco_dict, parameters=aruco_params)
 
     if disp:
-        # Verify if at last one ArUCo marker was detected
-        if len(corners) > 0:
-            ids = ids.flatten()
-
-            # Loop over the detected ArUCo corners
-            for (marker_corners, marker_id) in zip(corners, ids):
-                # Extract the marker corners (top-left, top-right, bottom-right and bottom-left order)
-                corners = marker_corners.reshape((4, 2))
-
-                # Convert each of the (x,y) coordinate pairs to integers
-                top_left = (int(corners[0][0]), int(corners[0][1]))
-                top_right = (int(corners[1][0]), int(corners[1][1]))
-                bottom_right = (int(corners[2][0]), int(corners[2][1]))
-                bottom_left = (int(corners[3][0]), int(corners[3][1]))
-
-                # Draw the bounding box of the ArUCo detection
-                cv2.line(image, top_left, top_right, (0, 255, 0), 2)
-                cv2.line(image, top_right, bottom_right, (0, 255, 0), 2)
-                cv2.line(image, bottom_right, bottom_left, (0, 255, 0), 2)
-                cv2.line(image, bottom_left, top_left, (0, 255, 0), 2)
-
-                # Compute and draw the center coordinates of the ArUco marker
-                center_x = int((top_left[0] + bottom_right[0])/2)
-                center_y = int((top_left[1] + bottom_right[1])/2)
-                cv2.circle(image, (center_x, center_y), 4, (0, 0, 255), -1)
-
-                # Draw the ArUco marker ID on the image
-                cv2.putText(image, str(marker_id), (top_left[0], top_left[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                print("[INFO] ArUco marker ID: {}".format(marker_id))
+        image = draw_markers_on_image(image, corners, ids)
 
         if show_rejected:
-            # Loop over the rejected ArUCo corners
-            for fig_corners in rejected:
-                # Extract the rejected marker corners (top-left, top-right, bottom-right and bottom-left order)
-                corners = fig_corners.reshape((4, 2))
-
-                # Convert each of the (x,y) coordinate pairs to integers
-                top_left = (int(corners[0][0]), int(corners[0][1]))
-                top_right = (int(corners[1][0]), int(corners[1][1]))
-                bottom_right = (int(corners[2][0]), int(corners[2][1]))
-                bottom_left = (int(corners[3][0]), int(corners[3][1]))
-
-                # Draw the bounding box of the ArUCo detection
-                cv2.line(image, top_left, top_right, (0, 0, 255), 2)
-                cv2.line(image, top_right, bottom_right, (0, 0, 255), 2)
-                cv2.line(image, bottom_right, bottom_left, (0, 0, 255), 2)
-                cv2.line(image, bottom_left, top_left, (0, 0, 255), 2)
-
+            image = draw_rejected_on_image(image, rejected)
         if show_dict:
-            # Draw the ArUco markers dict on the image
-            display_text = display_text + str(dict_name)
-            cv2.putText(image, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
-
+            image = draw_dict_on_image(image, display_text, dict_name)
         if resize:
             max_width = 1000
             max_height = 600
@@ -147,7 +100,7 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
     return corners, ids, rejected
 
 
-def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show_dict=False):
+def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show_dict=True):
     """Detects & displays aruco marker on the video.
 
     Args:
@@ -166,32 +119,31 @@ def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show
         ValueError: If given dictionary is not valid
 
     """
-    if dict_name is not None:
-        aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
+    if dict_name is None:
+        cv2.namedWindow("preview")
+        vc = cv2.VideoCapture(0)
+
+        display_text = 'Auto dict: '
         aruco_params = cv2.aruco.DetectorParameters_create()
 
-    cv2.namedWindow("preview")
-    vc = cv2.VideoCapture(0)
+        if vc.isOpened():  # try to get the first frame
+            rval, frame = vc.read()
+        else:
+            frame = np.zeros((1, 1))
+            rval = False
 
-    if vc.isOpened():  # try to get the first frame
-        rval, frame = vc.read()
-    else:
-        rval = False
-    while rval:
-        cv2.imshow("preview", frame)
-        rval, frame = vc.read()
+        while rval:
+            cv2.imshow("preview", frame)
+            rval, frame = vc.read()
 
-        if dict_name is None:
             max_spot_num = 0
             detection_results = ([], [], [])
             chosen_dict_name = ''
-            display_text = 'Auto dict: '
 
             # Loop over the types of ArUco dictionaries
             for (dict_name, dict_enum) in ARUCO_DICT.items():
                 # Attempt to detect the markers for the current dict
                 aruco_dict = cv2.aruco.Dictionary_get(dict_enum)
-                aruco_params = cv2.aruco.DetectorParameters_create()
                 corners, ids, rejected = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
 
                 # Check if number of detected markers was greater than record
@@ -199,51 +151,119 @@ def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show
                     max_spot_num = len(corners)
                     detection_results = (corners, ids, rejected)
                     chosen_dict_name = dict_name
-                # print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
 
             # Final detection results
             corners, ids, rejected = detection_results
             dict_name = chosen_dict_name
+
+            if disp:
+                frame = draw_markers_on_image(frame, corners, ids)
+
+                if show_rejected:
+                    frame = draw_rejected_on_image(frame, rejected)
+                if show_dict:
+                    frame = draw_dict_on_image(frame, display_text, dict_name)
+
+            key = cv2.waitKey(20)
+            if key == 27:  # exit on ESC
+                break
+
+        vc.release()
+        cv2.destroyWindow("preview")
+
+    else:
+        display_text = 'Manual dict: '
+
+        if ARUCO_DICT.get(dict_name, None) is None:
+            raise ValueError("No such dictionary as '{}'".format(dict_name))
+
+        aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
+        aruco_params = cv2.aruco.DetectorParameters_create()
+
+        cv2.namedWindow("preview")
+        vc = cv2.VideoCapture(0)
+
+        if vc.isOpened():  # try to get the first frame
+            rval, frame = vc.read()
         else:
+            frame = np.zeros((1, 1))
+            rval = False
+
+        while rval:
+            cv2.imshow("preview", frame)
+            rval, frame = vc.read()
+
             corners, ids, rejected = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
-        print("[INFO] detected {} markers for '{}'".format(len(corners), dict_name))
-        # Verify if at last one ArUCo marker was detected
-        if len(corners) > 0:
-            # flatten the ArUco IDs list
-            ids = ids.flatten()
 
-            # Loop over the detected ArUCo corners
-            for (marker_corners, marker_id) in zip(corners, ids):
-                # Extract the marker corners (top-left, top-right, bottom-right and bottom-left order)
-                corners = marker_corners.reshape((4, 2))
-                # Convert each of the (x,y) coordinate pairs to integers
-                top_left = (int(corners[0][0]), int(corners[0][1]))
-                top_right = (int(corners[1][0]), int(corners[1][1]))
-                bottom_right = (int(corners[2][0]), int(corners[2][1]))
-                bottom_left = (int(corners[3][0]), int(corners[3][1]))
+            if disp:
+                frame = draw_markers_on_image(frame, corners, ids)
 
-                # Draw the bounding box of the ArUCo detection
-                cv2.line(frame, top_left, top_right, (0, 255, 0), 2)
-                cv2.line(frame, top_right, bottom_right, (0, 255, 0), 2)
-                cv2.line(frame, bottom_right, bottom_left, (0, 255, 0), 2)
-                cv2.line(frame, bottom_left, top_left, (0, 255, 0), 2)
+                if show_rejected:
+                    frame = draw_rejected_on_image(frame, rejected)
+                if show_dict:
+                    frame = draw_dict_on_image(frame, display_text, dict_name)
 
-                # Compute and draw the center coordinates of the ArUco marker
-                center_x = int((top_left[0] + bottom_right[0]) / 2)
-                center_y = int((top_left[1] + bottom_right[1]) / 2)
-                cv2.circle(frame, (center_x, center_y), 4, (0, 0, 255), -1)
+            key = cv2.waitKey(20)
+            if key == 27:  # exit on ESC
+                break
 
-                # Draw the ArUco marker ID on the image
-                cv2.putText(frame, str(marker_id), (top_left[0], top_left[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        vc.release()
+        cv2.destroyWindow("preview")
 
-        dict_name = None
 
-        key = cv2.waitKey(20)
-        if key == 27:  # exit on ESC
-            break
+def draw_markers_on_image(image, corners, ids):
+    """Draw detected markers and their ids on the image."""
+    # Verify if at last one ArUCo marker was detected
+    if len(corners) > 0:
+        ids = ids.flatten()
+        # Loop over the detected ArUCo corners
+        for (marker_corners, marker_id) in zip(corners, ids):
+            # Extract the marker corners (top-left, top-right, bottom-right and bottom-left order)
+            corners = marker_corners.reshape((4, 2))
+            # Convert each of the (x,y) coordinate pairs to integers
+            top_left = (int(corners[0][0]), int(corners[0][1]))
+            top_right = (int(corners[1][0]), int(corners[1][1]))
+            bottom_right = (int(corners[2][0]), int(corners[2][1]))
+            bottom_left = (int(corners[3][0]), int(corners[3][1]))
+            # Draw the bounding box of the ArUCo detection
+            cv2.line(image, top_left, top_right, (0, 255, 0), 2)
+            cv2.line(image, top_right, bottom_right, (0, 255, 0), 2)
+            cv2.line(image, bottom_right, bottom_left, (0, 255, 0), 2)
+            cv2.line(image, bottom_left, top_left, (0, 255, 0), 2)
+            # Compute and draw the center coordinates of the ArUco marker
+            center_x = int((top_left[0] + bottom_right[0])/2)
+            center_y = int((top_left[1] + bottom_right[1])/2)
+            cv2.circle(image, (center_x, center_y), 4, (0, 0, 255), -1)
+            # Draw the ArUco marker ID on the image
+            cv2.putText(image, str(marker_id), (top_left[0], top_left[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    return image
 
-    vc.release()
-    cv2.destroyWindow("preview")
+
+def draw_rejected_on_image(image, rejected):
+    """Draw rejected figures on the image."""
+    # Loop over the rejected ArUCo corners
+    for fig_corners in rejected:
+        # Extract the rejected marker corners (top-left, top-right, bottom-right and bottom-left order)
+        corners = fig_corners.reshape((4, 2))
+        # Convert each of the (x,y) coordinate pairs to integers
+        top_left = (int(corners[0][0]), int(corners[0][1]))
+        top_right = (int(corners[1][0]), int(corners[1][1]))
+        bottom_right = (int(corners[2][0]), int(corners[2][1]))
+        bottom_left = (int(corners[3][0]), int(corners[3][1]))
+        # Draw the bounding box of the ArUCo detection
+        cv2.line(image, top_left, top_right, (0, 0, 255), 2)
+        cv2.line(image, top_right, bottom_right, (0, 0, 255), 2)
+        cv2.line(image, bottom_right, bottom_left, (0, 0, 255), 2)
+        cv2.line(image, bottom_left, top_left, (0, 0, 255), 2)
+    return image
+
+
+def draw_dict_on_image(image, det_type, dict_name):
+    """Draw searched dict name on the image."""
+    # Draw the ArUco markers dict on the image
+    display_text = det_type + str(dict_name)
+    cv2.putText(image, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+    return image
 
 
 if __name__ == '__main__':
@@ -252,8 +272,10 @@ if __name__ == '__main__':
     dict = "DICT_4X4_50"
     image = cv2.imread(path)
 
-    detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
-    #detect_on_video(1)
+    #detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
+    detect_on_video(1)
 
-# TODO: Poprawić resizing obrazów w video?
-# TODO: Czy funkcje powinny zwracać także typ wykrywanych znaczników?
+# TODO: Co ma zwrócić funkcja video?
+# TODO: Czy funkcje mają zwracać automatycznie znaleziony dict?
+# TODO: Umożliwić detekcję na video zapisanym na dysku
+# TODO: Dopracować dokumentacje i elem estetyczne
