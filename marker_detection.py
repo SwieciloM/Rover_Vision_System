@@ -4,6 +4,7 @@
 import cv2
 import numpy as np
 import sys
+import argparse
 from constants import ARUCO_DICT
 
 
@@ -20,7 +21,7 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
 
     Returns:
         array-like: Vector of detected marker corners. For each marker, its four corners are provided.
-        array-like: Vector of identifiers of the detected markers. The identifier is of type int
+        array-like: Vector of identifiers of the detected markers. The identifier is of type int.
         array-like: ImgPoints of those squares whose inner code has not a correct codification.
 
     Raises:
@@ -100,11 +101,11 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
     return corners, ids, rejected
 
 
-def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show_dict=True):
+def detect_on_video(footage=None, dict_name=None, disp=True, show_rejected=False, show_dict=True):
     """Detects & displays aruco marker on the video.
 
     Args:
-        source ():
+        footage (str, optional):
         dict_name (str, optional): Indicates the type of markers that will be searched. Automatic detection if None.
         disp (bool, optional): Determines if the result video will be displayed.
         show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result video.
@@ -120,11 +121,14 @@ def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show
 
     """
     if dict_name is None:
-        cv2.namedWindow("preview")
-        vc = cv2.VideoCapture(0)
-
         display_text = 'Auto dict: '
         aruco_params = cv2.aruco.DetectorParameters_create()
+        cv2.namedWindow("preview")
+
+        if footage is None:
+            vc = cv2.VideoCapture(0)
+        else:
+            vc = cv2.VideoCapture(footage)
 
         if vc.isOpened():  # try to get the first frame
             rval, frame = vc.read()
@@ -133,9 +137,6 @@ def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show
             rval = False
 
         while rval:
-            cv2.imshow("preview", frame)
-            rval, frame = vc.read()
-
             max_spot_num = 0
             detection_results = ([], [], [])
             chosen_dict_name = ''
@@ -164,35 +165,38 @@ def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show
                 if show_dict:
                     frame = draw_dict_on_image(frame, display_text, dict_name)
 
+            cv2.imshow("preview", frame)
+            rval, frame = vc.read()
+
             key = cv2.waitKey(20)
             if key == 27:  # exit on ESC
                 break
 
         vc.release()
-        cv2.destroyWindow("preview")
+        cv2.destroyAllWindows()
 
     else:
-        display_text = 'Manual dict: '
-
         if ARUCO_DICT.get(dict_name, None) is None:
             raise ValueError("No such dictionary as '{}'".format(dict_name))
 
+        display_text = 'Manual dict: '
         aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
         aruco_params = cv2.aruco.DetectorParameters_create()
+        cv2.namedWindow("preview", cv2.WINDOW_AUTOSIZE)
 
-        cv2.namedWindow("preview")
-        vc = cv2.VideoCapture(0)
+        if footage is None:
+            vc = cv2.VideoCapture(0)
+        else:
+            vc = cv2.VideoCapture(footage)
 
-        if vc.isOpened():  # try to get the first frame
+        # Try to get the first frame
+        if vc.isOpened():
             rval, frame = vc.read()
         else:
             frame = np.zeros((1, 1))
             rval = False
 
         while rval:
-            cv2.imshow("preview", frame)
-            rval, frame = vc.read()
-
             corners, ids, rejected = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
 
             if disp:
@@ -203,12 +207,16 @@ def detect_on_video(source, dict_name=None, disp=True, show_rejected=False, show
                 if show_dict:
                     frame = draw_dict_on_image(frame, display_text, dict_name)
 
+            cv2.imshow("preview", frame)
+            rval, frame = vc.read()
+
             key = cv2.waitKey(20)
-            if key == 27:  # exit on ESC
+            # Exit if ESC key button or X window button pressed
+            if key == 27 or cv2.getWindowProperty("preview", cv2.WND_PROP_VISIBLE) < 1:
                 break
 
         vc.release()
-        cv2.destroyWindow("preview")
+        cv2.destroyAllWindows()
 
 
 def draw_markers_on_image(image, corners, ids):
@@ -273,9 +281,9 @@ if __name__ == '__main__':
     image = cv2.imread(path)
 
     #detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
-    detect_on_video(1)
+    #detect_on_video("C:\\Users\\micha\\Pulpit\\Życie prywatne\\Filmy\\Drift1.mp4", "DICT_4X4_50", show_rejected=True)
+    detect_on_video(dict_name="DICT_4X4_50", show_rejected=True)
 
-# TODO: Co ma zwrócić funkcja video?
-# TODO: Czy funkcje mają zwracać automatycznie znaleziony dict?
-# TODO: Umożliwić detekcję na video zapisanym na dysku
+# TODO: Zrobić ewentualną możliwość reshapowania w podglądzie video
+# TODO: Dodać zwracanie automatycznie wykrytego słownika w razie potrzeby
 # TODO: Dopracować dokumentacje i elem estetyczne
