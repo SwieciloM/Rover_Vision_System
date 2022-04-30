@@ -41,16 +41,16 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
             aruco_params = cv2.aruco.DetectorParameters_create()
             corners, ids, rejected = cv2.aruco.detectMarkers(image, aruco_dict, parameters=aruco_params)
 
-            # Check if number of detected markers was greater than record
+            # Check if number of detected markers was greater than previous record
             if len(corners) > max_spot_num:
+                # Write results to temp variables
                 max_spot_num = len(corners)
                 detection_results = (corners, ids, rejected)
                 chosen_dict_name = dict_name
 
-        # Final detection results
+        # Rewrite variables using final detection results
         corners, ids, rejected = detection_results
         dict_name = chosen_dict_name
-
     else:
         display_text = 'Manual dict: '
 
@@ -68,14 +68,18 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
 
         if show_rejected:
             image = draw_rejected_on_image(image, rejected)
+
         if show_dict:
             image = draw_dict_on_image(image, display_text, dict_name)
+
         if resize:
+            # Max image dimensions
             max_width = 1000
             max_height = 600
 
-            # Resize the displayed image if original image is bigger than 600x1000
             img_shape = np.shape(image)
+
+            # Check if any of the image dim is bigger than max dim
             if img_shape[0] > max_height and img_shape[1] <= max_width:
                 k = max_height/img_shape[0]
             elif img_shape[1] > max_width and img_shape[0] <= max_height:
@@ -87,6 +91,8 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
                     k = max_width / img_shape[1]
             else:
                 k = 1
+
+            # Count new dimensions based on 'k' scaling factor and resize the image
             dim = (int(img_shape[1] * k), int(img_shape[0] * k))
             r_image = cv2.resize(image, dim)
 
@@ -268,7 +274,6 @@ def draw_rejected_on_image(image, rejected):
 
 def draw_dict_on_image(image, det_type, dict_name):
     """Draw searched dict name on the image."""
-    # Draw the ArUco markers dict on the image
     display_text = det_type + str(dict_name)
     cv2.putText(image, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
     return image
