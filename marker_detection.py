@@ -3,7 +3,6 @@
 
 import cv2
 import numpy as np
-import sys
 import argparse
 from constants import ARUCO_DICT
 
@@ -107,23 +106,20 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
     return corners, ids, rejected
 
 
-def detect_on_video(footage=None, dict_name=None, disp=True, show_rejected=False, show_dict=True):
-    """Detects & displays aruco marker on the video.
+def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, show_dict=True):
+    """Detects & displays aruco marker on the given video or webcam.
 
     Args:
-        footage (str, optional):
+        source (str or int): Path to video file or device index. If None, primary camera (webcam) will be used.
         dict_name (str, optional): Indicates the type of markers that will be searched. Automatic detection if None.
         disp (bool, optional): Determines if the result video will be displayed.
         show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result video.
         show_dict (bool, optional): Specifies if searched dictionary name will be displayed on the result video.
 
-    Returns:
-        array-like: Vector of detected marker corners. For each marker, its four corners are provided.
-        array-like: Vector of identifiers of the detected markers. The identifier is of type int
-        array-like: ImgPoints of those squares whose inner code has not a correct codification.
-
     Raises:
         ValueError: If given dictionary is not valid
+        TypeError: If given source argument has wrong type
+        SystemError: If program is unable to open video source
 
     """
     if dict_name is None:
@@ -131,17 +127,19 @@ def detect_on_video(footage=None, dict_name=None, disp=True, show_rejected=False
         aruco_params = cv2.aruco.DetectorParameters_create()
         cv2.namedWindow("preview")
 
-        if footage is None:
-            vc = cv2.VideoCapture(0)
+        # Check data type of source argument
+        if isinstance(source, int) or isinstance(source, str):
+            vc = cv2.VideoCapture(source)
         else:
-            vc = cv2.VideoCapture(footage)
+            raise TypeError("Source parameter does not accept {}".format(type(source)))
 
-        if vc.isOpened():  # try to get the first frame
+        # Try to get the first frame
+        if (vc is not None) and vc.isOpened():
             rval, frame = vc.read()
         else:
-            frame = np.zeros((1, 1))
-            rval = False
+            raise SystemError("Unable to open video source: {}".format(source))
 
+        # Loop until there are no frames left
         while rval:
             max_spot_num = 0
             detection_results = ([], [], [])
@@ -153,13 +151,13 @@ def detect_on_video(footage=None, dict_name=None, disp=True, show_rejected=False
                 aruco_dict = cv2.aruco.Dictionary_get(dict_enum)
                 corners, ids, rejected = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
 
-                # Check if number of detected markers was greater than record
+                # Check if number of detected markers was greater than previous record
                 if len(corners) > max_spot_num:
                     max_spot_num = len(corners)
                     detection_results = (corners, ids, rejected)
                     chosen_dict_name = dict_name
 
-            # Final detection results
+            # Rewrite variables using final detection results
             corners, ids, rejected = detection_results
             dict_name = chosen_dict_name
 
@@ -168,40 +166,41 @@ def detect_on_video(footage=None, dict_name=None, disp=True, show_rejected=False
 
                 if show_rejected:
                     frame = draw_rejected_on_image(frame, rejected)
+
                 if show_dict:
                     frame = draw_dict_on_image(frame, display_text, dict_name)
 
+            # Update the output image
             cv2.imshow("preview", frame)
             rval, frame = vc.read()
 
             key = cv2.waitKey(20)
-            if key == 27:  # exit on ESC
+            # Exit if ESC key button or X window button pressed
+            if key == 27 or cv2.getWindowProperty("preview", cv2.WND_PROP_VISIBLE) < 1:
                 break
-
-        vc.release()
-        cv2.destroyAllWindows()
-
     else:
+        # Verify that the supplied dict exist and is supported by OpenCV
         if ARUCO_DICT.get(dict_name, None) is None:
             raise ValueError("No such dictionary as '{}'".format(dict_name))
 
         display_text = 'Manual dict: '
         aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
         aruco_params = cv2.aruco.DetectorParameters_create()
-        cv2.namedWindow("preview", cv2.WINDOW_AUTOSIZE)
+        cv2.namedWindow("preview")
 
-        if footage is None:
-            vc = cv2.VideoCapture(0)
+        # Check data type of source argument
+        if isinstance(source, int) or isinstance(source, str):
+            vc = cv2.VideoCapture(source)
         else:
-            vc = cv2.VideoCapture(footage)
+            raise TypeError("Source parameter does not accept {}".format(type(source)))
 
         # Try to get the first frame
-        if vc.isOpened():
+        if (vc is not None) and vc.isOpened():
             rval, frame = vc.read()
         else:
-            frame = np.zeros((1, 1))
-            rval = False
+            raise SystemError("Unable to open video source: {}".format(source))
 
+        # Loop until there are no frames left
         while rval:
             corners, ids, rejected = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
 
@@ -210,9 +209,11 @@ def detect_on_video(footage=None, dict_name=None, disp=True, show_rejected=False
 
                 if show_rejected:
                     frame = draw_rejected_on_image(frame, rejected)
+
                 if show_dict:
                     frame = draw_dict_on_image(frame, display_text, dict_name)
 
+            # Update the output image
             cv2.imshow("preview", frame)
             rval, frame = vc.read()
 
@@ -221,8 +222,8 @@ def detect_on_video(footage=None, dict_name=None, disp=True, show_rejected=False
             if key == 27 or cv2.getWindowProperty("preview", cv2.WND_PROP_VISIBLE) < 1:
                 break
 
-        vc.release()
-        cv2.destroyAllWindows()
+    vc.release()
+    cv2.destroyAllWindows()
 
 
 def draw_markers_on_image(image, corners, ids):
@@ -230,26 +231,32 @@ def draw_markers_on_image(image, corners, ids):
     # Verify if at last one ArUCo marker was detected
     if len(corners) > 0:
         ids = ids.flatten()
+
         # Loop over the detected ArUCo corners
         for (marker_corners, marker_id) in zip(corners, ids):
             # Extract the marker corners (top-left, top-right, bottom-right and bottom-left order)
             corners = marker_corners.reshape((4, 2))
+
             # Convert each of the (x,y) coordinate pairs to integers
             top_left = (int(corners[0][0]), int(corners[0][1]))
             top_right = (int(corners[1][0]), int(corners[1][1]))
             bottom_right = (int(corners[2][0]), int(corners[2][1]))
             bottom_left = (int(corners[3][0]), int(corners[3][1]))
+
             # Draw the bounding box of the ArUCo detection
             cv2.line(image, top_left, top_right, (0, 255, 0), 2)
             cv2.line(image, top_right, bottom_right, (0, 255, 0), 2)
             cv2.line(image, bottom_right, bottom_left, (0, 255, 0), 2)
             cv2.line(image, bottom_left, top_left, (0, 255, 0), 2)
+
             # Compute and draw the center coordinates of the ArUco marker
             center_x = int((top_left[0] + bottom_right[0])/2)
             center_y = int((top_left[1] + bottom_right[1])/2)
             cv2.circle(image, (center_x, center_y), 4, (0, 0, 255), -1)
+
             # Draw the ArUco marker ID on the image
             cv2.putText(image, str(marker_id), (top_left[0], top_left[1] - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
     return image
 
 
@@ -259,16 +266,19 @@ def draw_rejected_on_image(image, rejected):
     for fig_corners in rejected:
         # Extract the rejected marker corners (top-left, top-right, bottom-right and bottom-left order)
         corners = fig_corners.reshape((4, 2))
+
         # Convert each of the (x,y) coordinate pairs to integers
         top_left = (int(corners[0][0]), int(corners[0][1]))
         top_right = (int(corners[1][0]), int(corners[1][1]))
         bottom_right = (int(corners[2][0]), int(corners[2][1]))
         bottom_left = (int(corners[3][0]), int(corners[3][1]))
+
         # Draw the bounding box of the ArUCo detection
         cv2.line(image, top_left, top_right, (0, 0, 255), 2)
         cv2.line(image, top_right, bottom_right, (0, 0, 255), 2)
         cv2.line(image, bottom_right, bottom_left, (0, 0, 255), 2)
         cv2.line(image, bottom_left, top_left, (0, 0, 255), 2)
+
     return image
 
 
@@ -291,4 +301,3 @@ if __name__ == '__main__':
 
 # TODO: Zrobić ewentualną możliwość reshapowania w podglądzie video
 # TODO: Dodać zwracanie automatycznie wykrytego słownika w razie potrzeby
-# TODO: Dopracować dokumentacje i elem estetyczne
