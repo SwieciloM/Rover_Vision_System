@@ -7,7 +7,7 @@ import argparse
 from constants import ARUCO_DICT
 
 
-def generate_marker(dictionary, id, side_pixels=420, border_bits=1, disp=True, save=True, path='markers'):
+def generate_marker(dictionary, id, side_pixels=420, border_bits=1, disp=True, save=True, path='images\generated_markers'):
     """Creates & saves a canonical marker image.
 
     Args:
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     ap.add_argument("-bb", "--borderbit", type=int, default=1, help="width of the marker border")
     ap.add_argument("-nd", "--no_disp", action='store_false', default=True, help="flag specifying if marker will be displayed")
     ap.add_argument("-ns", "--no_save", action='store_false', default=True, help="flag specifying if marker will be saved on disc")
-    ap.add_argument("-p", "--path", type=str, default='markers', help="path to output image containing ArUCo tag")
+    ap.add_argument("-p", "--path", type=str, default='images\generated_markers', help="path to output image containing ArUCo tag")
     args = vars(ap.parse_args())
 
     # Pass arguments to the function

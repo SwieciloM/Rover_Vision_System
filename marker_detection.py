@@ -125,7 +125,7 @@ def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, sh
     if dict_name is None:
         display_text = 'Auto dict: '
         aruco_params = cv2.aruco.DetectorParameters_create()
-        cv2.namedWindow("preview")
+        cv2.namedWindow("Preview")
 
         # Check data type of source argument
         if isinstance(source, int) or isinstance(source, str):
@@ -171,12 +171,12 @@ def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, sh
                     frame = draw_dict_on_image(frame, display_text, dict_name)
 
             # Update the output image
-            cv2.imshow("preview", frame)
+            cv2.imshow("Preview", frame)
             rval, frame = vc.read()
 
             key = cv2.waitKey(20)
             # Exit if ESC key button or X window button pressed
-            if key == 27 or cv2.getWindowProperty("preview", cv2.WND_PROP_VISIBLE) < 1:
+            if key == 27 or cv2.getWindowProperty("Preview", cv2.WND_PROP_VISIBLE) < 1:
                 break
     else:
         # Verify that the supplied dict exist and is supported by OpenCV
@@ -186,7 +186,7 @@ def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, sh
         display_text = 'Manual dict: '
         aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
         aruco_params = cv2.aruco.DetectorParameters_create()
-        cv2.namedWindow("preview")
+        cv2.namedWindow("Preview")
 
         # Check data type of source argument
         if isinstance(source, int) or isinstance(source, str):
@@ -214,12 +214,12 @@ def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, sh
                     frame = draw_dict_on_image(frame, display_text, dict_name)
 
             # Update the output image
-            cv2.imshow("preview", frame)
+            cv2.imshow("Preview", frame)
             rval, frame = vc.read()
 
             key = cv2.waitKey(20)
             # Exit if ESC key button or X window button pressed
-            if key == 27 or cv2.getWindowProperty("preview", cv2.WND_PROP_VISIBLE) < 1:
+            if key == 27 or cv2.getWindowProperty("Preview", cv2.WND_PROP_VISIBLE) < 1:
                 break
 
     vc.release()
@@ -291,13 +291,13 @@ def draw_dict_on_image(image, det_type, dict_name):
 
 if __name__ == '__main__':
     # Load the input image fom disk
-    path = 'real_images//test5.jpg'
+    path = 'images\\test_images\\test5.jpg'
     dict = "DICT_4X4_50"
     image = cv2.imread(path)
 
     #detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
     #detect_on_video("C:\\Users\\micha\\Pulpit\\Życie prywatne\\Filmy\\Drift1.mp4", "DICT_4X4_50", show_rejected=True)
-    detect_on_video(dict_name="DICT_4X4_50", show_rejected=True)
+    detect_on_video()
 
 # TODO: Zrobić ewentualną możliwość reshapowania w podglądzie video
 # TODO: Dodać zwracanie automatycznie wykrytego słownika w razie potrzeby
