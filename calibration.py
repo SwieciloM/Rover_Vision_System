@@ -130,6 +130,7 @@ def calibrate_charuco(dirpath, image_format, marker_length, square_length):
         cameraMatrix=None,
         distCoeffs=None)
 
+    # Return camera matrix, distortion coefficients, rotation and translation vectors
     return [ret, mtx, dist, rvecs, tvecs]
 
 
@@ -156,8 +157,27 @@ def load_coefficients(path):
     return [camera_matrix, dist_matrix]
 
 
-def get_charuco_calimgs(board_size, source=0, n_img=20, dest_path='images\calibration_images', image_format='jpg', min_time_inter=0.5):
+def get_charuco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='images\calibration_images', image_format='jpg', min_time_inter=0.5):
+    """Creates and saves calibration images containing ChArUco board.
+
+    Args:
+        board_size (Tuple[float]): Number of rows and columns in the currently used board.
+        dict_name (str, optional): Indicates the type of ArUco markers that are placed on board.
+        source (str or int): Path to video file or device index. If 0, primary camera (webcam) will be used.
+        n_img (int, optional): Maximum number of images to be captured.
+        path (str, optional): Path to destination where images will be saved.
+        image_format (int, optional): Format of images like 'jpg', 'png' etc.
+        min_time_inter (float): Time in seconds determining minimal interval between two following images.
+
+    Raises:
+        ValueError: If given dictionary is not valid
+        TypeError: If given source argument has wrong type
+        SystemError: If program is unable to open video source
+
+    """
     cv2.namedWindow("Preview")
+    n_aruco = (board_size[0]*board_size[1])//2
+    inner_size = (board_size[0]-1, board_size[1]-1)
 
     # Check data type of source argument
     if isinstance(source, int) or isinstance(source, str):
@@ -171,35 +191,32 @@ def get_charuco_calimgs(board_size, source=0, n_img=20, dest_path='images\calibr
     else:
         raise SystemError("Unable to open video source: {}".format(source))
 
-    n_aruco = (board_size[0]*board_size[1])//2
-    inner_size = (board_size[0]-1, board_size[1]-1)
+    # Counter for number of saved images and start time of capturing
     n = 0
     last_img_time = time.time()
+
     # Loop until there are no frames left or the required number of images has been reached
     while rval and n < n_img:
-        # Find the chess board corners
+        # Find chessboard and aruco corners
         ret, inner_corners = cv2.findChessboardCorners(frame, inner_size, None)
-        aruco_corners, _, _ = detect_on_image(frame, dict_name='DICT_4X4_50', disp=False)
+        aruco_corners, _, _ = detect_on_image(frame, dict_name=dict_name, disp=False)
 
+        # Time difference between current and last frame
         time_inter = time.time() - last_img_time
 
         # If found, add object points, image points (after refining them)
         if ret and len(aruco_corners) == n_aruco and time_inter > min_time_inter:
-            # Save frame
-            cv2.imwrite("{}\\calib{}.{}".format(dest_path, n+1, image_format), frame)
-
-            # Draw the corners
+            cv2.imwrite("{}\\calib{}.{}".format(path, n + 1, image_format), frame)
             frame = cv2.drawChessboardCorners(frame, inner_size, inner_corners, ret)
-
+            last_img_time = time.time()
             n += 1
 
-            last_img_time = time.time()
-
+        # Display actual number of saved images
         display_text = f"Obtained patterns: {n}/{n_img}"
         cv2.putText(frame, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+
         # Update the output image
         cv2.imshow("Preview", frame)
-
         rval, frame = vc.read()
 
         key = cv2.waitKey(10)
