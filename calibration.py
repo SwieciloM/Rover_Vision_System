@@ -358,17 +358,19 @@ if __name__ == '__main__':
     # dict = "DICT_4X4_50"
     # image = cv2.imread(path)
 
-    #get_aruco_calimgs(board_size=(7, 5), n_img=50, path="images\\calibration_images\\1")
-    # ret, mtx, dist, rvecs, tvecs = calibrate_aruco("images\\calibration_images\\1", "DICT_6X6_50", (7, 5), 26.5, 3)
-    # print(f"ret:\n {ret}")
-    # print(f"mtx:\n {mtx}")
-    # print(f"dist:\n {dist}")
-    # print(f"rvecs:\n {rvecs}")
-    # print(f"tvecs:\n {tvecs}")
-    # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calibration_aruco.yml")
+    get_aruco_calimgs(board_size=(7, 5), n_img=50, path="images\\calibration_images\\1")
+    get_chess_calimgs(board_size=(8, 7), n_img=50, path="images\\calibration_images\\2")
+    get_charuco_calimgs(board_size=(5, 5), n_img=50, path="images\\calibration_images\\3")
 
-    # get_chess_calimgs(board_size=(8, 7), n_img=50, path="images\\calibration_images\\2")
+    ret, mtx, dist, rvecs, tvecs = calibrate_aruco("images\\calibration_images\\1", "DICT_6X6_50", (7, 5), 26.5, 3)
+    print(f"ret:\n {ret}")
+    print(f"mtx:\n {mtx}")
+    print(f"dist:\n {dist}")
+    print(f"rvecs:\n {rvecs}")
+    print(f"tvecs:\n {tvecs}")
+    # Save coefficients into a file
+    save_coefficients(mtx, dist, "calibration_aruco.yml")
+
     ret, mtx, dist, rvecs, tvecs = calibrate_chessboard("images\\calibration_images\\2", (7, 8), 24)
     print(f"ret:\n {ret}")
     print(f"mtx:\n {mtx}")
@@ -378,7 +380,6 @@ if __name__ == '__main__':
     # Save coefficients into a file
     save_coefficients(mtx, dist, "calibration_chess.yml")
 
-    get_charuco_calimgs(board_size=(5, 5), n_img=50, path="images\\calibration_images\\3")
     ret, mtx, dist, rvecs, tvecs = calibrate_charuco("images\\calibration_images\\3", "DICT_4X4_50", (5, 5), 23, 30)
     print(f"ret:\n {ret}")
     print(f"mtx:\n {mtx}")
@@ -387,7 +388,6 @@ if __name__ == '__main__':
     print(f"tvecs:\n {tvecs}")
     # Save coefficients into a file
     save_coefficients(mtx, dist, "calibration_charuco.yml")
-
 
     # Load coefficients
     # mtx, dist = load_coefficients('calibration_chess.yml')
