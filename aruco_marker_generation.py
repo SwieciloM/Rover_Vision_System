@@ -4,10 +4,12 @@
 import cv2
 import numpy as np
 import argparse
+
+from pathlib import Path
 from constants import ARUCO_DICT
 
 
-def generate_marker(dict_name: str, id: int, side_pixels: int = 420, border_bits: int = 1, disp: bool = True, save: bool = True, path: str = 'images\generated_markers') -> np.ndarray:
+def generate_marker(dict_name: str, id: int, side_pixels: int = 420, border_bits: int = 1, disp: bool = True, save: bool = True, path: str = None) -> np.ndarray:
     """Creates & saves a canonical marker image.
 
     Args:
@@ -17,13 +19,14 @@ def generate_marker(dict_name: str, id: int, side_pixels: int = 420, border_bits
         border_bits (int, optional): Width of the marker's border.
         disp (bool, optional): Flag specifying if marker will be displayed.
         save (bool, optional): Flag specifying if marker will be saved on disc.
-        path (str, optional): Path to destination where markers will be saved.
+        path (str, optional): Path to the destination where image is ought to be saved.
 
     Returns:
         numpy.ndarray: Canonical marker image.
 
     Raises:
         ValueError: If dictionary is not valid or ID out of range
+        SystemError: If image could not be saved
 
     """
     # Verify that the supplied dict exist and is supported by OpenCV
@@ -43,7 +46,17 @@ def generate_marker(dict_name: str, id: int, side_pixels: int = 420, border_bits
 
     # Write the generated ArUCo tag to disc
     if save:
-        cv2.imwrite("{}\\Tag no.{} from {}.png".format(path, id, dict_name), tag)
+        if path is None:
+            dest_path = f"Tag no.{id} from {dict_name}.jpg"
+        else:
+            dest_path = Path(f"{path}")
+
+        saved = cv2.imwrite(str(dest_path), tag)
+
+        if saved:
+            print(f"Image saved successfully on {dest_path}")
+        else:
+            raise SystemError("Could not save image")
 
     # Display the generated ArUCo tag on screen
     if disp:
@@ -57,6 +70,11 @@ if __name__ == '__main__':
     # Creating an ArgumentParser object
     ap = argparse.ArgumentParser()
 
+    def none_or_str(value):
+        if value == 'None':
+            return None
+        return value
+
     # Command line arguments:
     ap.add_argument("-t", "--type", type=str, required=True, help="type of ArUCo tag to generate")
     ap.add_argument("-i", "--id", type=int, required=True, help="ID of ArUCo tag to generate")
@@ -64,10 +82,12 @@ if __name__ == '__main__':
     ap.add_argument("-bb", "--borderbit", type=int, default=1, help="width of the marker border")
     ap.add_argument("-nd", "--no_disp", action='store_false', default=True, help="flag specifying if marker will be displayed")
     ap.add_argument("-ns", "--no_save", action='store_false', default=True, help="flag specifying if marker will be saved on disc")
-    ap.add_argument("-p", "--path", type=str, default='images\generated_markers', help="path to output image containing ArUCo tag")
+    ap.add_argument("-p", "--path", type=none_or_str, nargs='?', default=None, help="path to output image containing ArUCo tag")
     args = vars(ap.parse_args())
 
     # Pass arguments to the function
     generate_marker(args["type"], args["id"], args["sidepix"], args["borderbit"], args["no_disp"], args["no_save"], args["path"])
 
+    # Example:
     # generate_marker('DICT_5X5_250', 10, save=True)
+    # aruco_marker_generation.py -t DICT_5X5_100 -i 80
