@@ -5,9 +5,10 @@ import cv2
 import numpy as np
 import argparse
 from constants import ARUCO_DICT
+from typing import Tuple, Union, Optional
 
 
-def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_dict=True, resize=True):
+def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bool = True, show_rejected: bool = False, show_dict: bool = True, resize: bool = True) -> Tuple[np.array, np.array, np.array]:
     """Detects & displays aruco marker on the given image.
 
     Args:
@@ -15,16 +16,16 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
         dict_name (str, optional): Indicates the type of markers that will be searched. Automatic detection if None.
         disp (bool, optional): Determines if the result image will be displayed.
         show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result image.
-        show_dict (bool, optional): Specifies if searched dictionary name will be displayed on the result image.
+        show_dict (bool, optional): Specifies if searched dict_name name will be displayed on the result image.
         resize (bool, optional): Specifies if the result image will be reshaped before displaying.
 
     Returns:
-        array-like: Vector of detected marker corners. For each marker, its four corners are provided.
-        array-like: Vector of identifiers of the detected markers. The identifier is of type int.
-        array-like: ImgPoints of those squares whose inner code has not a correct codification.
+        A Tuple with 3 array-like vectors. First of them contains detected marker corners. For each marker, its four
+        corners are provided. The second is vector of identifiers of the detected markers. The identifier is of
+        type int. Third vector includes ImgPoints of those squares whose inner code has not a correct codification.
 
     Raises:
-        ValueError: If given dictionary is not valid
+        ValueError: If given dict_name is not valid
 
     """
     if dict_name is None:
@@ -106,7 +107,7 @@ def detect_on_image(image, dict_name=None, disp=True, show_rejected=False, show_
     return corners, ids, rejected
 
 
-def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, show_dict=True):
+def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None, disp: bool = True, show_rejected: bool = False, show_dict: bool = True) -> None:
     """Detects & displays aruco marker on the given video or webcam.
 
     Args:
@@ -114,10 +115,10 @@ def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, sh
         dict_name (str, optional): Indicates the type of markers that will be searched. Automatic detection if None.
         disp (bool, optional): Determines if the result video will be displayed.
         show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result video.
-        show_dict (bool, optional): Specifies if searched dictionary name will be displayed on the result video.
+        show_dict (bool, optional): Specifies if searched dict_name name will be displayed on the result video.
 
     Raises:
-        ValueError: If given dictionary is not valid
+        ValueError: If given dict_name is not valid
         TypeError: If given source argument has wrong type
         SystemError: If program is unable to open video source
 
@@ -181,7 +182,7 @@ def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, sh
     else:
         # Verify that the supplied dict exist and is supported by OpenCV
         if ARUCO_DICT.get(dict_name, None) is None:
-            raise ValueError("No such dictionary as '{}'".format(dict_name))
+            raise ValueError("No such dict_name as '{}'".format(dict_name))
 
         display_text = 'Manual dict: '
         aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
@@ -217,7 +218,7 @@ def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, sh
             cv2.imshow("Preview", frame)
             rval, frame = vc.read()
 
-            key = cv2.waitKey(20)
+            key = cv2.waitKey(10)
             # Exit if ESC key button or X window button pressed
             if key == 27 or cv2.getWindowProperty("Preview", cv2.WND_PROP_VISIBLE) < 1:
                 break
@@ -226,7 +227,7 @@ def detect_on_video(source=0, dict_name=None, disp=True, show_rejected=False, sh
     cv2.destroyAllWindows()
 
 
-def draw_markers_on_image(image, corners, ids):
+def draw_markers_on_image(image: np.ndarray, corners: np.ndarray, ids: np.ndarray) -> np.ndarray:
     """Draw detected markers and their ids on the image."""
     # Verify if at last one ArUCo marker was detected
     if len(corners) > 0:
@@ -260,7 +261,7 @@ def draw_markers_on_image(image, corners, ids):
     return image
 
 
-def draw_rejected_on_image(image, rejected):
+def draw_rejected_on_image(image: np.ndarray, rejected: np.ndarray) -> np.ndarray:
     """Draw rejected figures on the image."""
     # Loop over the rejected ArUCo corners
     for fig_corners in rejected:
@@ -282,7 +283,7 @@ def draw_rejected_on_image(image, rejected):
     return image
 
 
-def draw_dict_on_image(image, det_type, dict_name):
+def draw_dict_on_image(image: np.ndarray, det_type: str, dict_name: str) -> np.ndarray:
     """Draw searched dict name on the image."""
     display_text = det_type + str(dict_name)
     cv2.putText(image, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
@@ -301,3 +302,4 @@ if __name__ == '__main__':
 
 # TODO: Zrobić ewentualną możliwość reshapowania w podglądzie video
 # TODO: Dodać zwracanie automatycznie wykrytego słownika w razie potrzeby
+# TODO: Dodoać argparsera z możliwością wyboru danej funkcji

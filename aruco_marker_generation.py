@@ -7,17 +7,17 @@ import argparse
 from constants import ARUCO_DICT
 
 
-def generate_marker(dictionary, id, side_pixels=420, border_bits=1, disp=True, save=True, path='images\generated_markers'):
+def generate_marker(dict_name: str, id: int, side_pixels: int = 420, border_bits: int = 1, disp: bool = True, save: bool = True, path: str = 'images\generated_markers') -> np.ndarray:
     """Creates & saves a canonical marker image.
 
     Args:
-        dictionary (str): Dictionary indicating the type of marker.
+        dict_name (str): Dictionary indicating the type of marker.
         id (int): Valid identifier of the marker that will be returned.
-        side_pixels (int): Size of the image in pixels.
-        border_bits (int): Width of the marker's border.
-        disp (bool): Flag specifying if marker will be displayed.
-        save (bool): Flag specifying if marker will be saved on disc.
-        path (str): Path to destination where markers will be saved.
+        side_pixels (int, optional): Size of the image in pixels.
+        border_bits (int, optional): Width of the marker's border.
+        disp (bool, optional): Flag specifying if marker will be displayed.
+        save (bool, optional): Flag specifying if marker will be saved on disc.
+        path (str, optional): Path to destination where markers will be saved.
 
     Returns:
         numpy.ndarray: Canonical marker image.
@@ -27,15 +27,15 @@ def generate_marker(dictionary, id, side_pixels=420, border_bits=1, disp=True, s
 
     """
     # Verify that the supplied dict exist and is supported by OpenCV
-    if ARUCO_DICT.get(dictionary, None) is None:
-        raise ValueError("No such dictionary as '{}'".format(dictionary))
+    if ARUCO_DICT.get(dict_name, None) is None:
+        raise ValueError("No such dict_name as '{}'".format(dict_name))
 
-    # Load the ArUCo dictionary
-    aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dictionary])
+    # Load the ArUCo dict_name
+    aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
 
     # Verify that the supplied tag ID exist and is supported by OpenCV
     if id >= len(aruco_dict.bytesList):
-        raise ValueError("Tag ID '{}' doesn't exist in {}".format(id, dictionary))
+        raise ValueError("Tag ID '{}' doesn't exist in {}".format(id, dict_name))
 
     # Allocate memory for the output ArUCo tag and then draw the ArUCo tag on the output image
     tag = np.zeros((side_pixels, side_pixels, 1), dtype="uint8")
@@ -43,7 +43,7 @@ def generate_marker(dictionary, id, side_pixels=420, border_bits=1, disp=True, s
 
     # Write the generated ArUCo tag to disc
     if save:
-        cv2.imwrite("{}\\Tag no.{} from {}.png".format(path, id, dictionary), tag)
+        cv2.imwrite("{}\\Tag no.{} from {}.png".format(path, id, dict_name), tag)
 
     # Display the generated ArUCo tag on screen
     if disp:
