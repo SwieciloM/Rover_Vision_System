@@ -27,6 +27,7 @@ def calibrate_chessboard(path, board_size: Tuple[int, int], square_size: Union[i
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane
+    gray = np.zeros((1, 1))
 
     images = pathlib.Path(path).glob(f'*.{image_format}')
     # Iterate through all images
@@ -43,17 +44,14 @@ def calibrate_chessboard(path, board_size: Tuple[int, int], square_size: Union[i
 
             corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             imgpoints.append(corners2)
-    print(np.shape(gray)[0:2])
-    print(gray.shape[::-1])
-    print(np.shape(objpoints))
-    print(np.shape(imgpoints))
+
     # Calibrate camera
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
     return [ret, mtx, dist, rvecs, tvecs]
 
 
-def calibrate_aruco(path: str, dict_name, board_size: Tuple[int, int], marker_length: Union[int, float], marker_separation: Union[int, float], image_format: str = 'jpg'):
+def calibrate_aruco(path: str, dict_name: str, board_size: Tuple[int, int], marker_length: Union[int, float], marker_separation: Union[int, float], image_format: str = 'jpg'):
     """Apply camera calibration using aruco.The dimensions are in mm."""
     # Verify that the supplied dict exist and is supported by OpenCV
     if ARUCO_DICT.get(dict_name, None) is None:
@@ -89,32 +87,27 @@ def calibrate_aruco(path: str, dict_name, board_size: Tuple[int, int], marker_le
     return [ret, mtx, dist, rvecs, tvecs]
 
 
-def calibrate_charuco(dirpath, image_format, marker_length, square_length):
-    """Apply camera calibration using aruco. The dimensions are in cm."""
-    aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_50)
-    board = cv2.aruco.CharucoBoard_create(5, 5, square_length, marker_length, aruco_dict)
-    arucoParams = cv2.aruco.DetectorParameters_create()
+def calibrate_charuco(path: str, dict_name: str, board_size: Tuple[int, int], marker_length: Union[int, float], square_length: Union[int, float], image_format: str = 'jpg'):
+    """Apply camera calibration using aruco. The dimensions are in mm."""
+    # Verify that the supplied dict exist and is supported by OpenCV
+    if ARUCO_DICT.get(dict_name, None) is None:
+        raise ValueError("No such dict_name as '{}'".format(dict_name))
 
-    counter, corners_list, id_list = [], [], []
-    img_dir = pathlib.Path(dirpath)
-    first = 0
+    # Attempt to detect the markers for the given dict
+    aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
+    arucoParams = cv2.aruco.DetectorParameters_create()
+    board = cv2.aruco.CharucoBoard_create(board_size[0], board_size[1], square_length, marker_length, aruco_dict)
+
+    corners_list, id_list = [], []
+    img_dir = pathlib.Path(path)
     # Find the ArUco markers inside each image
     for img in img_dir.glob(f'*{image_format}'):
         print(f'using image {img}')
         image = cv2.imread(str(img))
         img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        corners, ids, rejected = cv2.aruco.detectMarkers(
-            img_gray,
-            aruco_dict,
-            parameters=arucoParams
-        )
+        corners, ids, rejected = cv2.aruco.detectMarkers(img_gray, aruco_dict, parameters=arucoParams)
 
-        resp, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(
-            markerCorners=corners,
-            markerIds=ids,
-            image=img_gray,
-            board=board
-        )
+        resp, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(markerCorners=corners, markerIds=ids, image=img_gray, board=board)
         # If a Charuco board was found, let's collect image/corner points
         # Requiring at least 20 squares
         if resp > 15: #20
@@ -123,13 +116,7 @@ def calibrate_charuco(dirpath, image_format, marker_length, square_length):
             id_list.append(charuco_ids)
 
     # Actual calibration
-    ret, mtx, dist, rvecs, tvecs = cv2.aruco.calibrateCameraCharuco(
-        charucoCorners=corners_list,
-        charucoIds=id_list,
-        board=board,
-        imageSize=img_gray.shape,
-        cameraMatrix=None,
-        distCoeffs=None)
+    ret, mtx, dist, rvecs, tvecs = cv2.aruco.calibrateCameraCharuco(charucoCorners=corners_list, charucoIds=id_list, board=board, imageSize=img_gray.shape, cameraMatrix=None, distCoeffs=None)
 
     # Return camera matrix, distortion coefficients, rotation and translation vectors
     return [ret, mtx, dist, rvecs, tvecs]
@@ -421,4 +408,3 @@ if __name__ == '__main__':
 # TODO: Zbadać czemu minimalna liczba wewnętrznyvh rogów w calibrate_charuco() wynosiła 20
 # TODO: Naprawićć warningi o 'rererece before a assigment'
 # TODO: Zrozumieć co się dzieje w funkcjch
-# TODO: Uporządkować pliki

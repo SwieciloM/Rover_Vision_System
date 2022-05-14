@@ -7,9 +7,10 @@ import argparse
 
 from pathlib import Path
 from constants import ARUCO_DICT
+from typing import Optional
 
 
-def generate_marker(dict_name: str, id: int, side_pixels: int = 420, border_bits: int = 1, disp: bool = True, save: bool = True, path: str = None) -> np.ndarray:
+def generate_marker(dict_name: str, id: int, side_pixels: int = 420, border_bits: int = 1, disp: bool = True, save: bool = True, path: Optional[str] = None) -> np.ndarray:
     """Creates & saves a canonical marker image.
 
     Args:

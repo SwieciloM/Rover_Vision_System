@@ -1,0 +1,4 @@
+1. Przetestować skrypty (zwłaszcza te z zapisam/odczytem plików) na Linuxie
+2. Dodać obsługę plików (marker_detection, calibration) przez argparsery 
+3. Poprzenosić zbyt długie linijki do następnych
+4. Przetestować skrypty z zewnętrzną kamerą 
