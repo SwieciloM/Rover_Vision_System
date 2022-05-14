@@ -27,26 +27,25 @@ def calibrate_chessboard(path, board_size: Tuple[int, int], square_size: Union[i
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane
-    gray = np.zeros((1, 1))
+    image = np.zeros((1, 1))
 
     images = pathlib.Path(path).glob(f'*.{image_format}')
     # Iterate through all images
     for fname in images:
-        img = cv2.imread(str(fname))
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        image = cv2.imread(str(fname))
 
         # Find the chess board corners
-        ret, corners = cv2.findChessboardCorners(gray, (width, height), None)
+        ret, corners = cv2.findChessboardCorners(image, (width, height), None)
 
         # If found, add object points, image points (after refining them)
         if ret:
             objpoints.append(objp)
 
-            corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+            corners2 = cv2.cornerSubPix(image, corners, (11, 11), (-1, -1), criteria)
             imgpoints.append(corners2)
 
     # Calibrate camera
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, image.shape[::-1], None, None)
 
     return [ret, mtx, dist, rvecs, tvecs]
 
@@ -99,24 +98,25 @@ def calibrate_charuco(path: str, dict_name: str, board_size: Tuple[int, int], ma
     board = cv2.aruco.CharucoBoard_create(board_size[0], board_size[1], square_length, marker_length, aruco_dict)
 
     corners_list, id_list = [], []
+    image = np.zeros((1, 1))
+    inner_corners_num = (board_size[0]-1)*(board_size[1]-1)
     img_dir = pathlib.Path(path)
     # Find the ArUco markers inside each image
     for img in img_dir.glob(f'*{image_format}'):
         print(f'using image {img}')
         image = cv2.imread(str(img))
-        img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        corners, ids, rejected = cv2.aruco.detectMarkers(img_gray, aruco_dict, parameters=arucoParams)
+        corners, ids, _ = cv2.aruco.detectMarkers(image, aruco_dict, parameters=arucoParams)
 
-        resp, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(markerCorners=corners, markerIds=ids, image=img_gray, board=board)
+        resp, charuco_corners, charuco_ids = cv2.aruco.interpolateCornersCharuco(markerCorners=corners, markerIds=ids, image=image, board=board)
         # If a Charuco board was found, let's collect image/corner points
-        # Requiring at least 20 squares
-        if resp > 15: #20
+        # Check the number of chessboard inner corners
+        if resp == inner_corners_num:
             # Add these corners and ids to our calibration arrays
             corners_list.append(charuco_corners)
             id_list.append(charuco_ids)
 
     # Actual calibration
-    ret, mtx, dist, rvecs, tvecs = cv2.aruco.calibrateCameraCharuco(charucoCorners=corners_list, charucoIds=id_list, board=board, imageSize=img_gray.shape, cameraMatrix=None, distCoeffs=None)
+    ret, mtx, dist, rvecs, tvecs = cv2.aruco.calibrateCameraCharuco(charucoCorners=corners_list, charucoIds=id_list, board=board, imageSize=image.shape, cameraMatrix=None, distCoeffs=None)
 
     # Return camera matrix, distortion coefficients, rotation and translation vectors
     return [ret, mtx, dist, rvecs, tvecs]
@@ -379,7 +379,7 @@ if __name__ == '__main__':
     save_coefficients(mtx, dist, "calibration_chess.yml")
 
     get_charuco_calimgs(board_size=(5, 5), n_img=50, path="images\\calibration_images\\3")
-    ret, mtx, dist, rvecs, tvecs = calibrate_charuco("images\\calibration_images\\3", '.jpg', 23, 30)
+    ret, mtx, dist, rvecs, tvecs = calibrate_charuco("images\\calibration_images\\3", "DICT_4X4_50", (5, 5), 23, 30)
     print(f"ret:\n {ret}")
     print(f"mtx:\n {mtx}")
     print(f"dist:\n {dist}")
