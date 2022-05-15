@@ -3,7 +3,6 @@
 
 import cv2
 import numpy as np
-import argparse
 
 from constants import ARUCO_DICT
 from typing import Tuple, Union, Optional
