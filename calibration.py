@@ -27,27 +27,30 @@ def calibrate_chessboard(path, board_size: Tuple[int, int], square_size: Union[i
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
     imgpoints = []  # 2d points in image plane
-    image = np.zeros((1, 1))
+    gray = np.zeros((1, 1))
 
     images = pathlib.Path(path).glob(f'*.{image_format}')
     # Iterate through all images
     for fname in images:
         image = cv2.imread(str(fname))
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         # Find the chess board corners
-        ret, corners = cv2.findChessboardCorners(image, (width, height), None)
+        ret, corners = cv2.findChessboardCorners(gray, (width, height), None)
 
         # If found, add object points, image points (after refining them)
         if ret:
             objpoints.append(objp)
 
-            corners2 = cv2.cornerSubPix(image, corners, (11, 11), (-1, -1), criteria)
+            corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
             imgpoints.append(corners2)
 
     # Calibrate camera
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, image.shape[::-1], None, None)
+    results = cv2.calibrateCameraExtended(objpoints, imgpoints, gray.shape[::-1], None, None)
+    ret, mtx, dist, rvecs, tvecs, _, _, error = results
 
-    return [ret, mtx, dist, rvecs, tvecs]
+    # Return camera matrix, distortion coefficients, rotation/translation vectors and reprojection errors
+    return [ret, mtx, dist, rvecs, tvecs, error]
 
 
 def calibrate_aruco(path: str, dict_name: str, board_size: Tuple[int, int], marker_length: Union[int, float], marker_separation: Union[int, float], image_format: str = 'jpg'):
@@ -82,8 +85,11 @@ def calibrate_aruco(path: str, dict_name: str, board_size: Tuple[int, int], mark
 
     counter = np.array(counter)
     # Actual calibration
-    ret, mtx, dist, rvecs, tvecs = cv2.aruco.calibrateCameraAruco(corners_list, id_list, counter, board, np.shape(image)[0:2], None, None)
-    return [ret, mtx, dist, rvecs, tvecs]
+    results = cv2.aruco.calibrateCameraArucoExtended(corners_list, id_list, counter, board, np.shape(image)[0:2], None, None)
+    ret, mtx, dist, rvecs, tvecs, _, _, error = results
+
+    # Return camera matrix, distortion coefficients, rotation/translation vectors and reprojection errors
+    return [ret, mtx, dist, rvecs, tvecs, error]
 
 
 def calibrate_charuco(path: str, dict_name: str, board_size: Tuple[int, int], marker_length: Union[int, float], square_length: Union[int, float], image_format: str = 'jpg'):
@@ -116,10 +122,11 @@ def calibrate_charuco(path: str, dict_name: str, board_size: Tuple[int, int], ma
             id_list.append(charuco_ids)
 
     # Actual calibration
-    ret, mtx, dist, rvecs, tvecs = cv2.aruco.calibrateCameraCharuco(charucoCorners=corners_list, charucoIds=id_list, board=board, imageSize=image.shape, cameraMatrix=None, distCoeffs=None)
+    results = cv2.aruco.calibrateCameraCharucoExtended(charucoCorners=corners_list, charucoIds=id_list, board=board, imageSize=np.shape(image)[0:2], cameraMatrix=None, distCoeffs=None)
+    ret, mtx, dist, rvecs, tvecs, _, _, error = results
 
-    # Return camera matrix, distortion coefficients, rotation and translation vectors
-    return [ret, mtx, dist, rvecs, tvecs]
+    # Return camera matrix, distortion coefficients, rotation/translation vectors and reprojection errors
+    return [ret, mtx, dist, rvecs, tvecs, error]
 
 
 def save_coefficients(mtx, dist, path):
@@ -323,7 +330,7 @@ def get_charuco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='im
     while rval and n < n_img:
         # Find chessboard and aruco corners
         ret, inner_corners = cv2.findChessboardCorners(frame, inner_size, None)
-        aruco_corners, _, _ = detect_on_image(frame, dict_name=dict_name, disp=False)
+        aruco_corners, ids, _ = detect_on_image(frame, dict_name=dict_name, disp=False)
 
         # Time difference between current and last frame
         time_inter = time.time() - last_img_time
@@ -332,6 +339,7 @@ def get_charuco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='im
         if ret and len(aruco_corners) == n_aruco and time_inter > min_time_inter:
             cv2.imwrite("{}\\charuco_calib_{}.{}".format(path, n + 1, image_format), frame)
             frame = cv2.drawChessboardCorners(frame, inner_size, inner_corners, ret)
+            frame = draw_markers_on_image(frame, aruco_corners, ids)
             last_img_time = time.time()
             n += 1
 
@@ -358,36 +366,39 @@ if __name__ == '__main__':
     # dict = "DICT_4X4_50"
     # image = cv2.imread(path)
 
-    get_aruco_calimgs(board_size=(7, 5), n_img=50, path="images\\calibration_images\\1")
-    get_chess_calimgs(board_size=(8, 7), n_img=50, path="images\\calibration_images\\2")
-    get_charuco_calimgs(board_size=(5, 5), n_img=50, path="images\\calibration_images\\3")
+    # get_aruco_calimgs(board_size=(7, 5), n_img=20, path="images\\calibration_images\\1")
+    # get_chess_calimgs(board_size=(8, 7), n_img=20, path="images\\calibration_images\\2")
+    # get_charuco_calimgs(board_size=(5, 5), n_img=20, path="images\\calibration_images\\3")
 
-    ret, mtx, dist, rvecs, tvecs = calibrate_aruco("images\\calibration_images\\1", "DICT_6X6_50", (7, 5), 26.5, 3)
-    print(f"ret:\n {ret}")
-    print(f"mtx:\n {mtx}")
-    print(f"dist:\n {dist}")
-    print(f"rvecs:\n {rvecs}")
-    print(f"tvecs:\n {tvecs}")
+    ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images\\calibration_images\\1", "DICT_6X6_50", (7, 5), 26.5, 3)
+    print(f"ret:\n{ret}\n")
+    print(f"Camera matrix:\n{mtx}\n")
+    print(f"Distortion coefficients:\n{dist}\n")
+    # print(f"Rotation vectors:\n{rvecs}\n")
+    # print(f"Translation vectors:\n{tvecs}\n")
+    print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
     # Save coefficients into a file
-    save_coefficients(mtx, dist, "calibration_aruco.yml")
+    save_coefficients(mtx, dist, "calibration_aruco2.yml")
 
-    ret, mtx, dist, rvecs, tvecs = calibrate_chessboard("images\\calibration_images\\2", (7, 8), 24)
-    print(f"ret:\n {ret}")
-    print(f"mtx:\n {mtx}")
-    print(f"dist:\n {dist}")
-    print(f"rvecs:\n {rvecs}")
-    print(f"tvecs:\n {tvecs}")
+    ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images\\calibration_images\\2", (7, 8), 24)
+    print(f"ret:\n{ret}\n")
+    print(f"Camera matrix:\n{mtx}\n")
+    print(f"Distortion coefficients:\n{dist}\n")
+    # print(f"Rotation vectors:\n{rvecs}\n")
+    # print(f"Translation vectors:\n{tvecs}\n")
+    print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
     # Save coefficients into a file
-    save_coefficients(mtx, dist, "calibration_chess.yml")
+    save_coefficients(mtx, dist, "calibration_chess2.yml")
 
-    ret, mtx, dist, rvecs, tvecs = calibrate_charuco("images\\calibration_images\\3", "DICT_4X4_50", (5, 5), 23, 30)
-    print(f"ret:\n {ret}")
-    print(f"mtx:\n {mtx}")
-    print(f"dist:\n {dist}")
-    print(f"rvecs:\n {rvecs}")
-    print(f"tvecs:\n {tvecs}")
-    # Save coefficients into a file
-    save_coefficients(mtx, dist, "calibration_charuco.yml")
+    ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("images\\calibration_images\\3", "DICT_4X4_50", (5, 5), 23, 30)
+    print(f"ret:\n{ret}\n")
+    print(f"Camera matrix:\n{mtx}\n")
+    print(f"Distortion coefficients:\n{dist}\n")
+    # print(f"Rotation vectors:\n{rvecs}\n")
+    # print(f"Translation vectors:\n{tvecs}\n")
+    print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # # Save coefficients into a file
+    save_coefficients(mtx, dist, "calibration_charuco2.yml")
 
     # Load coefficients
     # mtx, dist = load_coefficients('calibration_chess.yml')
@@ -395,16 +406,10 @@ if __name__ == '__main__':
     # dst = cv2.undistort(original, mtx, dist, None, mtx)
     # cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
 
-    # mean_error = 0
-    # for i in range(len(objpoints)):
-    #     imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
-    #     error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2) / len(imgpoints2)
-    #     mean_error += error
-    # print("total error: {}".format(mean_error / len(objpoints)))
 
 # TODO: Stworzyć test sprawdzający jakość kalibracji
-# TODO: Sparametryzować i udokumentować funkcje
-# TODO: Sprawdzić różnicę w obrazach przed undistortowaniem i po
-# TODO: Zbadać czemu minimalna liczba wewnętrznyvh rogów w calibrate_charuco() wynosiła 20
-# TODO: Naprawićć warningi o 'rererece before a assigment'
-# TODO: Zrozumieć co się dzieje w funkcjch
+# TODO: Uporządkować kod i dopisać komentarze/docstringi
+# TODO: Sprawdzić różnicę w obrazach przed kalibracją i po
+# TODO: Zrobić zabezpieczenia przed pustymi folderami, i zdjęciami które nie nadają się do kalibracji
+# TODO: Zrobić system sprawdzający jakość kalibracji i usuwające zjęcia negatywnie wpływające na nią
+# TODO: Naprawić funkcję kalibrującą 'calibrate_aruco()'
