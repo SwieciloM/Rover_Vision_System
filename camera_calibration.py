@@ -11,7 +11,7 @@ from typing import Tuple, Union
 from marker_detection import detect_on_image, draw_markers_on_image
 
 
-def calibrate_chessboard(path, board_size: Tuple[int, int], square_size: Union[int, float], image_format: str = 'jpg'):
+def calibrate_chessboard(path, board_size: Tuple[int, int], square_len: Union[int, float], image_format: str = 'jpg'):
     """Calibrate a camera using chessboard images."""
     # termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -22,7 +22,7 @@ def calibrate_chessboard(path, board_size: Tuple[int, int], square_size: Union[i
     objp = np.zeros((height*width, 3), np.float32)
     objp[:, :2] = np.mgrid[0:width, 0:height].T.reshape(-1, 2)
 
-    objp = objp * square_size
+    objp = objp * square_len
 
     # Arrays to store object points and image points from all the images.
     objpoints = []  # 3d point in real world space
@@ -53,7 +53,7 @@ def calibrate_chessboard(path, board_size: Tuple[int, int], square_size: Union[i
     return [ret, mtx, dist, rvecs, tvecs, error]
 
 
-def calibrate_aruco(path: str, dict_name: str, board_size: Tuple[int, int], marker_length: Union[int, float], marker_separation: Union[int, float], image_format: str = 'jpg'):
+def calibrate_aruco(path: str, dict_name: str, board_size: Tuple[int, int], marker_len: Union[int, float], marker_separation: Union[int, float], image_format: str = 'jpg'):
     """Apply camera calibration using aruco.The dimensions are in mm."""
     # Verify that the supplied dict exist and is supported by OpenCV
     if ARUCO_DICT.get(dict_name, None) is None:
@@ -62,7 +62,7 @@ def calibrate_aruco(path: str, dict_name: str, board_size: Tuple[int, int], mark
     # Attempt to detect the markers for the given dict
     aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
     aruco_params = cv2.aruco.DetectorParameters_create()
-    board = cv2.aruco.GridBoard_create(board_size[0], board_size[1], marker_length, marker_separation, aruco_dict)
+    board = cv2.aruco.GridBoard_create(board_size[0], board_size[1], marker_len, marker_separation, aruco_dict)
 
     counter, corners_list, id_list = [], [], []
     image = np.zeros((1, 1))
@@ -92,7 +92,7 @@ def calibrate_aruco(path: str, dict_name: str, board_size: Tuple[int, int], mark
     return [ret, mtx, dist, rvecs, tvecs, error]
 
 
-def calibrate_charuco(path: str, dict_name: str, board_size: Tuple[int, int], marker_length: Union[int, float], square_length: Union[int, float], image_format: str = 'jpg'):
+def calibrate_charuco(path: str, dict_name: str, board_size: Tuple[int, int], marker_len: Union[int, float], square_len: Union[int, float], image_format: str = 'jpg'):
     """Apply camera calibration using aruco. The dimensions are in mm."""
     # Verify that the supplied dict exist and is supported by OpenCV
     if ARUCO_DICT.get(dict_name, None) is None:
@@ -101,7 +101,7 @@ def calibrate_charuco(path: str, dict_name: str, board_size: Tuple[int, int], ma
     # Attempt to detect the markers for the given dict
     aruco_dict = cv2.aruco.Dictionary_get(ARUCO_DICT[dict_name])
     arucoParams = cv2.aruco.DetectorParameters_create()
-    board = cv2.aruco.CharucoBoard_create(board_size[0], board_size[1], square_length, marker_length, aruco_dict)
+    board = cv2.aruco.CharucoBoard_create(board_size[0], board_size[1], square_len, marker_len, aruco_dict)
 
     corners_list, id_list = [], []
     image = np.zeros((1, 1))
@@ -340,6 +340,7 @@ def get_charuco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='im
             cv2.imwrite("{}\\charuco_calib_{}.{}".format(path, n + 1, image_format), frame)
             frame = cv2.drawChessboardCorners(frame, inner_size, inner_corners, ret)
             frame = draw_markers_on_image(frame, aruco_corners, ids)
+            # drawDetectedCornersCharuco()
             last_img_time = time.time()
             n += 1
 

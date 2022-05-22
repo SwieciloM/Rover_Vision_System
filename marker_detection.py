@@ -301,5 +301,6 @@ if __name__ == '__main__':
     detect_on_video()
 
 # TODO: Zrobić ewentualną możliwość reshapowania w podglądzie video
+# TODO: Reshapowanie do wybranych rozmierów
 # TODO: Dodać zwracanie automatycznie wykrytego słownika w razie potrzeby
 # TODO: Dodoać argparsera z możliwością wyboru danej funkcji
