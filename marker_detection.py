@@ -235,7 +235,7 @@ def draw_markers_on_image(image: np.ndarray, corners: np.ndarray, ids: np.ndarra
     """Draw detected markers and their ids on the image.
 
     Args:
-        image (array-like): Image on which to draw on.
+        image (array-like): Image where shapes will be drawn.
         corners (array-like): Corners of markers.
         ids (array-like): Ids of markers.
 
@@ -279,7 +279,7 @@ def draw_rejected_on_image(image: np.ndarray, rejected: np.ndarray) -> np.ndarra
     """Draw rejected figures on the image.
 
     Args:
-        image (array-like): Image on which to draw on.
+        image (array-like): Image where shapes will be drawn.
         rejected (array-like): Rejected figures.
 
     Returns:
@@ -310,7 +310,7 @@ def draw_dict_on_image(image: np.ndarray, det_type: str, dict_name: str) -> np.n
     """Draw searched dict name on the image.
 
     Args:
-        image (array-like): Image on which to draw on.
+        image (array-like): Image where shapes will be drawn.
         det_type (str): Type of detection.
         dict_name (str): Detected dict.
 
