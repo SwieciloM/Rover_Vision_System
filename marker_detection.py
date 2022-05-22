@@ -8,7 +8,7 @@ from constants import ARUCO_DICT
 from typing import Tuple, Union, Optional
 
 
-def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bool = True, show_rejected: bool = False, show_dict: bool = True, resize: bool = True) -> Tuple[np.array, np.array, np.array]:
+def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bool = True, show_rejected: bool = False, show_dict: bool = True, max_dim: Optional[Tuple[int, int]] = None) -> Tuple[np.array, np.array, np.array]:
     """Detects & displays aruco marker on the given image.
 
     Args:
@@ -17,7 +17,7 @@ def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bo
         disp (bool, optional): Determines if the result image will be displayed.
         show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result image.
         show_dict (bool, optional): Specifies if searched dict_name name will be displayed on the result image.
-        resize (bool, optional): Specifies if the result image will be reshaped before displaying.
+        max_dim (Tuple[int, int], optional): Specifies maximum resolution of the displayed image.
 
     Returns:
         A Tuple with 3 array-like vectors. First of them contains detected marker corners. For each marker, its four
@@ -72,34 +72,18 @@ def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bo
         if show_dict:
             image = draw_dict_on_image(image, display_text, dict_name)
 
-        if resize:
+        if max_dim is not None:
             # Max image dimensions
-            max_width = 1000
-            max_height = 600
+            max_width, max_height = max_dim
 
-            img_shape = np.shape(image)
+            # Current dimensions
+            height, width, _ = np.shape(image)
 
             # Check if any of the image dim is bigger than max dim
-            if img_shape[0] > max_height and img_shape[1] <= max_width:
-                k = max_height/img_shape[0]
-            elif img_shape[1] > max_width and img_shape[0] <= max_height:
-                k = max_width/img_shape[1]
-            elif img_shape[0] > max_height and img_shape[1] > max_width:
-                if img_shape[0]-max_height > img_shape[1]-max_width:
-                    k = max_height / img_shape[0]
-                else:
-                    k = max_width / img_shape[1]
-            else:
-                k = 1
+            if width > max_width or height > max_height:
+                new_dim = (max_height, max_width)
+                image = cv2.resize(image, new_dim)
 
-            # Count new dimensions based on 'k' scaling factor and resize the image
-            dim = (int(img_shape[1] * k), int(img_shape[0] * k))
-            r_image = cv2.resize(image, dim)
-
-            # Show the output image
-            cv2.imshow("Detection result", r_image)
-            cv2.waitKey(0)
-        else:
             # Show the output image
             cv2.imshow("Detection result", image)
             cv2.waitKey(0)
@@ -107,15 +91,15 @@ def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bo
     return corners, ids, rejected
 
 
-def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None, disp: bool = True, show_rejected: bool = False, show_dict: bool = True) -> None:
+def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None, show_rejected: bool = False, show_dict: bool = True, max_dim: Optional[Tuple[int, int]] = None) -> None:
     """Detects & displays aruco marker on the given video or webcam.
 
     Args:
         source (str or int): Path to video file or device index. If 0, primary camera (webcam) will be used.
         dict_name (str, optional): Indicates the type of markers that will be searched. Automatic detection if None.
-        disp (bool, optional): Determines if the result video will be displayed.
         show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result video.
         show_dict (bool, optional): Specifies if searched dict_name name will be displayed on the result video.
+        max_dim (Tuple[int, int], optional): Specifies maximum resolution of the displayed image.
 
     Raises:
         ValueError: If given dict_name is not valid
@@ -161,15 +145,25 @@ def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None
             # Rewrite variables using final detection results
             corners, ids, rejected = detection_results
             dict_name = chosen_dict_name
+            frame = draw_markers_on_image(frame, corners, ids)
 
-            if disp:
-                frame = draw_markers_on_image(frame, corners, ids)
+            if show_rejected:
+                frame = draw_rejected_on_image(frame, rejected)
 
-                if show_rejected:
-                    frame = draw_rejected_on_image(frame, rejected)
+            if show_dict:
+                frame = draw_dict_on_image(frame, display_text, dict_name)
 
-                if show_dict:
-                    frame = draw_dict_on_image(frame, display_text, dict_name)
+            if max_dim is not None:
+                # Max frame dimensions
+                max_width, max_height = max_dim
+
+                # Current dimensions
+                height, width, _ = np.shape(frame)
+
+                # Check if any of the frame dim is bigger than max dim
+                if width > max_width or height > max_height:
+                    new_dim = (max_height, max_width)
+                    frame = cv2.resize(frame, new_dim)
 
             # Update the output image
             cv2.imshow("Preview", frame)
@@ -204,15 +198,25 @@ def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None
         # Loop until there are no frames left
         while rval:
             corners, ids, rejected = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=aruco_params)
+            frame = draw_markers_on_image(frame, corners, ids)
 
-            if disp:
-                frame = draw_markers_on_image(frame, corners, ids)
+            if show_rejected:
+                frame = draw_rejected_on_image(frame, rejected)
 
-                if show_rejected:
-                    frame = draw_rejected_on_image(frame, rejected)
+            if show_dict:
+                frame = draw_dict_on_image(frame, display_text, dict_name)
 
-                if show_dict:
-                    frame = draw_dict_on_image(frame, display_text, dict_name)
+            if max_dim is not None:
+                # Max frame dimensions
+                max_width, max_height = max_dim
+
+                # Current dimensions
+                height, width, _ = np.shape(frame)
+
+                # Check if any of the frame dim is bigger than max dim
+                if width > max_width or height > max_height:
+                    new_dim = (max_height, max_width)
+                    frame = cv2.resize(frame, new_dim)
 
             # Update the output image
             cv2.imshow("Preview", frame)
@@ -228,7 +232,17 @@ def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None
 
 
 def draw_markers_on_image(image: np.ndarray, corners: np.ndarray, ids: np.ndarray) -> np.ndarray:
-    """Draw detected markers and their ids on the image."""
+    """Draw detected markers and their ids on the image.
+
+    Args:
+        image (array-like): Image on which to draw on.
+        corners (array-like): Corners of markers.
+        ids (array-like): Ids of markers.
+
+    Returns:
+        array-like: Image with markers and ids drawn on.
+
+    """
     # Verify if at last one ArUCo marker was detected
     if len(corners) > 0:
         ids = ids.flatten()
@@ -262,7 +276,16 @@ def draw_markers_on_image(image: np.ndarray, corners: np.ndarray, ids: np.ndarra
 
 
 def draw_rejected_on_image(image: np.ndarray, rejected: np.ndarray) -> np.ndarray:
-    """Draw rejected figures on the image."""
+    """Draw rejected figures on the image.
+
+    Args:
+        image (array-like): Image on which to draw on.
+        rejected (array-like): Rejected figures.
+
+    Returns:
+        array-like: Image with rejected figures drawn on.
+
+    """
     # Loop over the rejected ArUCo corners
     for fig_corners in rejected:
         # Extract the rejected marker corners (top-left, top-right, bottom-right and bottom-left order)
@@ -284,7 +307,17 @@ def draw_rejected_on_image(image: np.ndarray, rejected: np.ndarray) -> np.ndarra
 
 
 def draw_dict_on_image(image: np.ndarray, det_type: str, dict_name: str) -> np.ndarray:
-    """Draw searched dict name on the image."""
+    """Draw searched dict name on the image.
+
+    Args:
+        image (array-like): Image on which to draw on.
+        det_type (str): Type of detection.
+        dict_name (str): Detected dict.
+
+    Returns:
+        array-like: Image with dict name drawn on.
+
+    """
     display_text = det_type + str(dict_name)
     cv2.putText(image, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
     return image
@@ -300,7 +333,4 @@ if __name__ == '__main__':
     #detect_on_video("C:\\Users\\micha\\Pulpit\\Życie prywatne\\Filmy\\Drift1.mp4", "DICT_4X4_50", show_rejected=True)
     detect_on_video()
 
-# TODO: Zrobić ewentualną możliwość reshapowania w podglądzie video
-# TODO: Reshapowanie do wybranych rozmierów
-# TODO: Dodać zwracanie automatycznie wykrytego słownika w razie potrzeby
 # TODO: Dodoać argparsera z możliwością wyboru danej funkcji
