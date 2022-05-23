@@ -8,7 +8,7 @@ from constants import ARUCO_DICT
 from typing import Tuple, Union, Optional
 
 
-def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bool = True, show_rejected: bool = False, show_dict: bool = True, max_dim: Optional[Tuple[int, int]] = None) -> Tuple[np.array, np.array, np.array]:
+def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_rejected: bool = False, show_dict: bool = True, max_dim: Optional[Tuple[int, int]] = None) -> Tuple[np.array, np.array, np.array]:
     """Detects & displays aruco marker on the given image.
 
     Args:

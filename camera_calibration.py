@@ -407,7 +407,7 @@ if __name__ == '__main__':
     # dst = cv2.undistort(original, mtx, dist, None, mtx)
     # cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
 
-
+# TODO: Print logi sygnalizujące obecny stan wykonywania kalibracji
 # TODO: Stworzyć test sprawdzający jakość kalibracji
 # TODO: Uporządkować kod i dopisać komentarze/docstringi
 # TODO: Sprawdzić różnicę w obrazach przed kalibracją i po
