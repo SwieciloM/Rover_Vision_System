@@ -280,7 +280,8 @@ if __name__ == '__main__':
 
 
     mtx, dist = load_coefficients('calibration_chess.yml')
-    estimate_camera_pose_on_video(26.5, mtx, dist)
+    estimate_camera_pose_on_video(100, mtx, dist, 1)
+    #estimate_camera_pose_on_video(26.5, mtx, dist)
     image = cv2.imread('images\\calibration_images\\1\\aruco_calib_20.jpg')
     print(np.shape(image))
     print(estimate_markers_pose_on_image(image, 26.5, mtx, dist, dict_name=None, disp=True))

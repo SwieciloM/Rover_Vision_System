@@ -11,9 +11,9 @@ from typing import Tuple, Union
 from marker_detection import detect_on_image, draw_markers_on_image
 
 
-def calibrate_chessboard(path, board_size: Tuple[int, int], square_len: Union[int, float], image_format: str = 'jpg'):
+def calibrate_chessboard(path: str, board_size: Tuple[int, int], square_len: Union[int, float], image_format: str = 'jpg'):
     """Calibrate a camera using chessboard images."""
-    # termination criteria
+    # Termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     height = board_size[0]-1
     width = board_size[1]-1
