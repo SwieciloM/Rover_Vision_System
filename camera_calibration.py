@@ -6,7 +6,7 @@ import numpy as np
 import pathlib
 import time
 
-from constants import ARUCO_DICT
+from constants import ARUCO_DICT, RESOLUTION
 from typing import Tuple, Union
 from marker_detection import detect_on_image, draw_markers_on_image
 
@@ -15,42 +15,44 @@ def calibrate_chessboard(path: str, board_size: Tuple[int, int], square_len: Uni
     """Calibrate a camera using chessboard images."""
     # Termination criteria
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-    height = board_size[0]-1
-    width = board_size[1]-1
 
-    # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ..., (8,6,0)
-    objp = np.zeros((height*width, 3), np.float32)
-    objp[:, :2] = np.mgrid[0:width, 0:height].T.reshape(-1, 2)
+    # Inner size (height, width)
+    isize = (board_size[0] - 1, board_size[1] - 1)
 
-    objp = objp * square_len
+    # Object points, like (0,0,0), (1,0,0), (2,0,0) ..., (8,6,0)
+    objp = np.zeros((isize[0]*isize[1], 3), np.float32)
+    objp[:, :2] = np.mgrid[0:isize[1], 0:isize[0]].T.reshape(-1, 2)
+    objp = objp * square_len  # Meter is a better metric
 
     # Arrays to store object points and image points from all the images.
-    objpoints = []  # 3d point in real world space
-    imgpoints = []  # 2d points in image plane
-    gray = np.zeros((1, 1))
+    objp_list = []  # 3d point in real world space
+    imgp_list = []  # 2d points in image plane
 
     images = pathlib.Path(path).glob(f'*.{image_format}')
     # Iterate through all images
     for fname in images:
+        # Reading image and conversion to grayscale
         image = cv2.imread(str(fname))
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         # Find the chess board corners
-        ret, corners = cv2.findChessboardCorners(gray, (width, height), None)
+        ret, chess_corners = cv2.findChessboardCorners(gray, (isize[1], isize[0]), None)
 
-        # If found, add object points, image points (after refining them)
+        # If found, collect object points and image points (after refining them)
         if ret:
-            objpoints.append(objp)
+            objp_list.append(objp)
+            subpix_corners = cv2.cornerSubPix(gray, chess_corners, (11, 11), (-1, -1), criteria)
+            imgp_list.append(subpix_corners)
 
-            corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-            imgpoints.append(corners2)
+    if len(objp_list) > 0:
+        # Calibrate camera
+        results = cv2.calibrateCameraExtended(objp_list, imgp_list, gray.shape[::-1], None, None)
+        ret, mtx, dist, rvecs, tvecs, _, _, error = results
 
-    # Calibrate camera
-    results = cv2.calibrateCameraExtended(objpoints, imgpoints, gray.shape[::-1], None, None)
-    ret, mtx, dist, rvecs, tvecs, _, _, error = results
-
-    # Return camera matrix, distortion coefficients, rotation/translation vectors and reprojection errors
-    return [ret, mtx, dist, rvecs, tvecs, error]
+        # Return camera matrix, distortion coefficients, rotation/translation vectors and reprojection errors
+        return [ret, mtx, dist, rvecs, tvecs, error]
+    else:
+        raise RuntimeError("No valid images to perform calibration")
 
 
 def calibrate_aruco(path: str, dict_name: str, board_size: Tuple[int, int], marker_len: Union[int, float], marker_separation: Union[int, float], image_format: str = 'jpg'):
@@ -127,6 +129,52 @@ def calibrate_charuco(path: str, dict_name: str, board_size: Tuple[int, int], ma
 
     # Return camera matrix, distortion coefficients, rotation/translation vectors and reprojection errors
     return [ret, mtx, dist, rvecs, tvecs, error]
+
+
+def check_supported_resolutions(source: int = 0) -> None:
+    """Checks which common resolutions are supported by the camera.
+
+    Args:
+        source (int): Device index. If 0, primary camera (webcam) will be used.
+
+    Raises:
+        TypeError: If given source argument has wrong type
+        SystemError: If program is unable to open video source
+
+    """
+    # Validate source argument
+    if isinstance(source, int):
+        cap = cv2.VideoCapture(source)
+    else:
+        raise TypeError("Source parameter does not accept {}".format(type(source)))
+
+    if cap is None:
+        raise SystemError("Unable to open video source: {}".format(source))
+
+    sup_res = []
+
+    print("Searching for resolutions supported by the camera... This process can take several minutes.")
+    # Looping through every resolution and adding supported ones to the list
+    for width, height in RESOLUTION:
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        width_set = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+        height_set = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        if width == width_set and height == height_set:
+            sup_res.append(f"{str(width)}x{str(height)}")
+
+    # Printing the results
+    num_sup_res = len(sup_res)
+    if num_sup_res == 0:
+        print("No supported resolution found.")
+    elif num_sup_res == 1:
+        print(f"1 supported resolution found:")
+    else:
+        print(f"{num_sup_res} supported resolutions found:")
+    for res in sup_res:
+        print(f"   {res}")
+
+    cap.release()
 
 
 def save_coefficients(mtx, dist, path):
