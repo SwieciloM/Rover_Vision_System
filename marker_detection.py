@@ -8,7 +8,7 @@ from constants import ARUCO_DICT
 from typing import Tuple, Union, Optional
 
 
-def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_rejected: bool = False, show_dict: bool = True, max_dim: Optional[Tuple[int, int]] = None) -> Tuple[np.array, np.array, np.array]:
+def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_rejected: bool = False, show_dict: bool = True, preview_resolution: Optional[Tuple[int, int]] = None) -> Tuple[np.array, np.array, np.array]:
     """Detects & displays aruco marker on the given image.
 
     Args:
@@ -17,7 +17,7 @@ def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bo
         disp (bool, optional): Determines if the result image will be displayed.
         show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result image.
         show_dict (bool, optional): Specifies if searched dict_name name will be displayed on the result image.
-        max_dim (Tuple[int, int], optional): Specifies maximum resolution of the displayed image.
+        preview_resolution (Tuple[int, int], optional): Resolution of the displayed image.
 
     Returns:
         A Tuple with 3 array-like vectors. First of them contains detected marker corners. For each marker, its four
@@ -72,26 +72,17 @@ def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bo
         if show_dict:
             image = draw_dict_on_image(image, display_text, dict_name)
 
-        if max_dim is not None:
-            # Max image dimensions
-            max_width, max_height = max_dim
+        if preview_resolution is not None and preview_resolution[0] > 0 and preview_resolution[1] > 0:
+            image = cv2.resize(image, preview_resolution)
 
-            # Current dimensions
-            height, width, _ = np.shape(image)
-
-            # Check if any of the image dim is bigger than max dim
-            if width > max_width or height > max_height:
-                new_dim = (max_height, max_width)
-                image = cv2.resize(image, new_dim)
-
-            # Show the output image
-            cv2.imshow("Detection result", image)
-            cv2.waitKey(0)
+        # Show the output image
+        cv2.imshow("Detection result", image)
+        cv2.waitKey(0)
 
     return corners, ids, rejected
 
 
-def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None, show_rejected: bool = False, show_dict: bool = True, max_dim: Optional[Tuple[int, int]] = None) -> None:
+def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None, show_rejected: bool = False, show_dict: bool = True, resolution: Optional[Tuple[int, int]] = None, preview_resolution: Optional[Tuple[int, int]] = None) -> None:
     """Detects & displays aruco marker on the given video or webcam.
 
     Args:
@@ -99,7 +90,8 @@ def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None
         dict_name (str, optional): Indicates the type of markers that will be searched. Automatic detection if None.
         show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result video.
         show_dict (bool, optional): Specifies if searched dict_name name will be displayed on the result video.
-        max_dim (Tuple[int, int], optional): Specifies maximum resolution of the displayed image.
+        resolution (Tuple[int, int], optional): Resolution of the captured video.
+        preview_resolution (Tuple[int, int], optional): Resolution of the displayed video.
 
     Raises:
         ValueError: If given dict_name is not valid
@@ -115,6 +107,26 @@ def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None
         # Check data type of source argument
         if isinstance(source, int) or isinstance(source, str):
             vc = cv2.VideoCapture(source)
+            # Check whether the camera resolution is to be changed
+            if resolution is not None and resolution[0] > 0 and resolution[1] > 0:
+                vc.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
+                vc.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+                width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+                height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                if resolution[0] != width_set or resolution[1] != height_set:
+                    print("Specified camera resolution could not be set.")
+                    print(f"{int(width_set)}x{int(height_set)} resolution is currently used.")
+                else:
+                    print(f"Using the specified camera resolution {int(width_set)}x{int(height_set)}.")
+            else:
+                width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+                height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                print(f"Using the default camera resolution {int(width_set)}x{int(height_set)}.")
+            # Preview resolution info log
+            if preview_resolution is not None and preview_resolution[0] > 0 and preview_resolution[1] > 0:
+                print(f"The preview resolution is set to {int(preview_resolution[0])}x{int(preview_resolution[1])}.")
+            else:
+                print("The preview resolution is the same as camera resolution.")
         else:
             raise TypeError("Source parameter does not accept {}".format(type(source)))
 
@@ -153,17 +165,8 @@ def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None
             if show_dict:
                 frame = draw_dict_on_image(frame, display_text, dict_name)
 
-            if max_dim is not None:
-                # Max frame dimensions
-                max_width, max_height = max_dim
-
-                # Current dimensions
-                height, width, _ = np.shape(frame)
-
-                # Check if any of the frame dim is bigger than max dim
-                if width > max_width or height > max_height:
-                    new_dim = (max_height, max_width)
-                    frame = cv2.resize(frame, new_dim)
+            if preview_resolution is not None and preview_resolution[0] > 0 and preview_resolution[1] > 0:
+                frame = cv2.resize(frame, preview_resolution)
 
             # Update the output image
             cv2.imshow("Preview", frame)
@@ -186,6 +189,26 @@ def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None
         # Check data type of source argument
         if isinstance(source, int) or isinstance(source, str):
             vc = cv2.VideoCapture(source)
+            # Check whether the camera resolution is to be changed
+            if resolution is not None and resolution[0] > 0 and resolution[1] > 0:
+                vc.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
+                vc.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+                width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+                height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                if resolution[0] != width_set or resolution[1] != height_set:
+                    print("Specified camera resolution could not be set.")
+                    print(f"{int(width_set)}x{int(height_set)} resolution is currently used.")
+                else:
+                    print(f"Using the specified camera resolution {int(width_set)}x{int(height_set)}.")
+            else:
+                width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+                height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+                print(f"Using the default camera resolution {int(width_set)}x{int(height_set)}.")
+            # Preview resolution info log
+            if preview_resolution is not None and preview_resolution[0] > 0 and preview_resolution[1] > 0:
+                print(f"The preview resolution is set to {int(preview_resolution[0])}x{int(preview_resolution[1])}.")
+            else:
+                print("The preview resolution is the same as camera resolution.")
         else:
             raise TypeError("Source parameter does not accept {}".format(type(source)))
 
@@ -206,17 +229,8 @@ def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None
             if show_dict:
                 frame = draw_dict_on_image(frame, display_text, dict_name)
 
-            if max_dim is not None:
-                # Max frame dimensions
-                max_width, max_height = max_dim
-
-                # Current dimensions
-                height, width, _ = np.shape(frame)
-
-                # Check if any of the frame dim is bigger than max dim
-                if width > max_width or height > max_height:
-                    new_dim = (max_height, max_width)
-                    frame = cv2.resize(frame, new_dim)
+            if preview_resolution is not None and preview_resolution[0] > 0 and preview_resolution[1] > 0:
+                frame = cv2.resize(frame, preview_resolution)
 
             # Update the output image
             cv2.imshow("Preview", frame)
@@ -329,8 +343,8 @@ if __name__ == '__main__':
     dict = "DICT_4X4_50"
     image = cv2.imread(path)
 
-    #detect_on_image(image, disp=True, show_rejected=False, resize=True, show_dict=True)
+    #detect_on_image(image, disp=True, show_rejected=False, show_dict=True, preview_resolution=(1400, 700))
     #detect_on_video("C:\\Users\\micha\\Pulpit\\Życie prywatne\\Filmy\\Drift1.mp4", "DICT_4X4_50", show_rejected=True)
-    detect_on_video()
+    detect_on_video(resolution=(640, 360))
 
 # TODO: Dodoać argparsera z możliwością wyboru danej funkcji
