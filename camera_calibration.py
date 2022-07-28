@@ -7,7 +7,7 @@ import pathlib
 import time
 
 from constants import ARUCO_DICT, RESOLUTION
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 from marker_detection import detect_on_image, draw_markers_on_image
 
 
@@ -336,17 +336,17 @@ def get_chess_calimgs(board_size, source=0, n_img=20, path='images\calibration_i
     cv2.destroyAllWindows()
 
 
-def get_charuco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='images\calibration_images', image_format='jpg', min_time_inter=0.5) -> None:
+def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str] = None, source: Union[str, int] = 0, n_img: int = 20, path: str = 'images\calibration_images', image_format: str = 'jpg', min_time_inter: float = 0.5) -> None:
     """Creates and saves calibration images containing ChArUco board.
 
     Args:
-        board_size (Tuple[float]): Number of rows and columns in the currently used board.
+        board_size (Tuple[float, float]): Number of rows and columns in the currently used board.
         dict_name (str, optional): Indicates the type of ArUco markers that are placed on board.
-        source (str or int): Path to video file or device index. If 0, primary camera (webcam) will be used.
+        source (str or int, optional): Path to video file or device index. If 0, primary camera (webcam) will be used.
         n_img (int, optional): Maximum number of images to be captured.
         path (str, optional): Path to destination where images will be saved.
         image_format (int, optional): Format of images like 'jpg', 'png' etc.
-        min_time_inter (float): Time in seconds determining minimal interval between two following images.
+        min_time_inter (float, optional): Time in seconds determining minimal interval between two following images.
 
     Raises:
         ValueError: If given dict_name is not valid
@@ -419,35 +419,35 @@ if __name__ == '__main__':
     # get_chess_calimgs(board_size=(8, 7), n_img=20, path="images\\calibration_images\\2")
     # get_charuco_calimgs(board_size=(5, 5), n_img=20, path="images\\calibration_images\\3")
 
-    ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images\\calibration_images\\1", "DICT_6X6_50", (7, 5), 26.5, 3)
-    print(f"ret:\n{ret}\n")
-    print(f"Camera matrix:\n{mtx}\n")
-    print(f"Distortion coefficients:\n{dist}\n")
-    # print(f"Rotation vectors:\n{rvecs}\n")
-    # print(f"Translation vectors:\n{tvecs}\n")
-    print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # Save coefficients into a file
-    save_coefficients(mtx, dist, "calibration_aruco2.yml")
-
-    ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images\\calibration_images\\2", (7, 8), 24)
-    print(f"ret:\n{ret}\n")
-    print(f"Camera matrix:\n{mtx}\n")
-    print(f"Distortion coefficients:\n{dist}\n")
-    # print(f"Rotation vectors:\n{rvecs}\n")
-    # print(f"Translation vectors:\n{tvecs}\n")
-    print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # Save coefficients into a file
-    save_coefficients(mtx, dist, "calibration_chess2.yml")
-
-    ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("images\\calibration_images\\3", "DICT_4X4_50", (5, 5), 23, 30)
-    print(f"ret:\n{ret}\n")
-    print(f"Camera matrix:\n{mtx}\n")
-    print(f"Distortion coefficients:\n{dist}\n")
-    # print(f"Rotation vectors:\n{rvecs}\n")
-    # print(f"Translation vectors:\n{tvecs}\n")
-    print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images\\calibration_images\\1", "DICT_6X6_50", (7, 5), 26.5, 3)
+    # print(f"ret:\n{ret}\n")
+    # print(f"Camera matrix:\n{mtx}\n")
+    # print(f"Distortion coefficients:\n{dist}\n")
+    # # print(f"Rotation vectors:\n{rvecs}\n")
+    # # print(f"Translation vectors:\n{tvecs}\n")
+    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
     # # Save coefficients into a file
-    save_coefficients(mtx, dist, "calibration_charuco2.yml")
+    # save_coefficients(mtx, dist, "calibration_aruco2.yml")
+    #
+    # ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images\\calibration_images\\2", (7, 8), 24)
+    # print(f"ret:\n{ret}\n")
+    # print(f"Camera matrix:\n{mtx}\n")
+    # print(f"Distortion coefficients:\n{dist}\n")
+    # # print(f"Rotation vectors:\n{rvecs}\n")
+    # # print(f"Translation vectors:\n{tvecs}\n")
+    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # # Save coefficients into a file
+    # save_coefficients(mtx, dist, "calibration_chess2.yml")
+    #
+    # ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("images\\calibration_images\\3", "DICT_4X4_50", (5, 5), 23, 30)
+    # print(f"ret:\n{ret}\n")
+    # print(f"Camera matrix:\n{mtx}\n")
+    # print(f"Distortion coefficients:\n{dist}\n")
+    # # print(f"Rotation vectors:\n{rvecs}\n")
+    # # print(f"Translation vectors:\n{tvecs}\n")
+    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # # # Save coefficients into a file
+    # save_coefficients(mtx, dist, "calibration_charuco2.yml")
 
     # Load coefficients
     # mtx, dist = load_coefficients('calibration_chess.yml')

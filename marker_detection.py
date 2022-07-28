@@ -86,7 +86,7 @@ def detect_on_video(source: Union[str, int] = 0, dict_name: Optional[str] = None
     """Detects & displays aruco marker on the given video or webcam.
 
     Args:
-        source (str or int): Path to video file or device index. If 0, primary camera (webcam) will be used.
+        source (str or int, optional): Path to video file or device index. If 0, primary camera (webcam) will be used.
         dict_name (str, optional): Indicates the type of markers that will be searched. Automatic detection if None.
         show_rejected (bool, optional): Specifies if rejected figures will be displayed on the result video.
         show_dict (bool, optional): Specifies if searched dict_name name will be displayed on the result video.
