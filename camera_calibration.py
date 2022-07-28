@@ -336,14 +336,15 @@ def get_chess_calimgs(board_size, source=0, n_img=20, path='images\calibration_i
     cv2.destroyAllWindows()
 
 
-def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str] = None, source: Union[str, int] = 0, n_img: int = 20, path: str = 'images\calibration_images', image_format: str = 'jpg', min_time_inter: float = 0.5) -> None:
+def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str] = None, source: Union[str, int] = 0, resolution: Optional[Tuple[int, int]] = None, n_max: int = 20, path: str = 'images\calibration_images', image_format: str = 'jpg', min_time_inter: float = 0.5) -> None:
     """Creates and saves calibration images containing ChArUco board.
 
     Args:
         board_size (Tuple[float, float]): Number of rows and columns in the currently used board.
         dict_name (str, optional): Indicates the type of ArUco markers that are placed on board.
         source (str or int, optional): Path to video file or device index. If 0, primary camera (webcam) will be used.
-        n_img (int, optional): Maximum number of images to be captured.
+        resolution (Tuple[int, int], optional): Resolution of the captured video.
+        n_max (int, optional): Maximum number of images to be captured.
         path (str, optional): Path to destination where images will be saved.
         image_format (int, optional): Format of images like 'jpg', 'png' etc.
         min_time_inter (float, optional): Time in seconds determining minimal interval between two following images.
@@ -358,9 +359,27 @@ def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str
     n_aruco = (board_size[0]*board_size[1])//2
     inner_size = (board_size[0]-1, board_size[1]-1)
 
+    # Formatting the file extension
+    image_format = image_format.strip().strip(".").lower()
+
     # Check data type of source argument
     if isinstance(source, int) or isinstance(source, str):
         vc = cv2.VideoCapture(source)
+        # Check whether the camera resolution is to be changed
+        if resolution is not None and resolution[0] > 0 and resolution[1] > 0:
+            vc.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
+            vc.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+            width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            if resolution[0] != width_set or resolution[1] != height_set:
+                print("Specified camera resolution could not be set.")
+                print(f"{int(width_set)}x{int(height_set)} resolution is currently used.")
+            else:
+                print(f"Using the specified camera resolution {int(width_set)}x{int(height_set)}.")
+        else:
+            width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            print(f"Using the default camera resolution {int(width_set)}x{int(height_set)}.")
     else:
         raise TypeError("Source parameter does not accept {}".format(type(source)))
 
@@ -374,8 +393,9 @@ def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str
     n = 0
     last_img_time = time.time()
 
+    print("Images acquisition started.")
     # Loop until there are no frames left or the required number of images has been reached
-    while rval and n < n_img:
+    while rval and n < n_max:
         # Find chessboard and aruco corners
         ret, inner_corners = cv2.findChessboardCorners(frame, inner_size, None)
         aruco_corners, ids, _ = detect_on_image(frame, dict_name=dict_name, disp=False)
@@ -388,12 +408,11 @@ def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str
             cv2.imwrite("{}\\charuco_calib_{}.{}".format(path, n + 1, image_format), frame)
             frame = cv2.drawChessboardCorners(frame, inner_size, inner_corners, ret)
             frame = draw_markers_on_image(frame, aruco_corners, ids)
-            # drawDetectedCornersCharuco()
             last_img_time = time.time()
             n += 1
 
         # Display actual number of saved images
-        display_text = f"Obtained patterns: {n}/{n_img}"
+        display_text = f"Obtained patterns: {n}/{n_max}"
         cv2.putText(frame, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
 
         # Update the output image
@@ -405,6 +424,8 @@ def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str
         if key == 27 or cv2.getWindowProperty("Preview", cv2.WND_PROP_VISIBLE) < 1:
             break
 
+    print("End of capture. Obtained {} out of {} images.".format(n, n_max))
+
     vc.release()
     cv2.destroyAllWindows()
 
@@ -415,9 +436,9 @@ if __name__ == '__main__':
     # dict = "DICT_4X4_50"
     # image = cv2.imread(path)
 
-    # get_aruco_calimgs(board_size=(7, 5), n_img=20, path="images\\calibration_images\\1")
-    # get_chess_calimgs(board_size=(8, 7), n_img=20, path="images\\calibration_images\\2")
-    # get_charuco_calimgs(board_size=(5, 5), n_img=20, path="images\\calibration_images\\3")
+    # get_aruco_calimgs(board_size=(7, 5), n_max=20, path="images\\calibration_images\\1")
+    # get_chess_calimgs(board_size=(8, 7), n_max=20, path="images\\calibration_images\\2")
+    # get_charuco_calimgs(board_size=(5, 5), dict_name="DICT_4X4_50", resolution=(1280, 720), n_max=150, path="images\\calibration_images\\3", min_time_inter=0.5)
 
     # ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images\\calibration_images\\1", "DICT_6X6_50", (7, 5), 26.5, 3)
     # print(f"ret:\n{ret}\n")
@@ -438,7 +459,7 @@ if __name__ == '__main__':
     # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
     # # Save coefficients into a file
     # save_coefficients(mtx, dist, "calibration_chess2.yml")
-    #
+
     # ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("images\\calibration_images\\3", "DICT_4X4_50", (5, 5), 23, 30)
     # print(f"ret:\n{ret}\n")
     # print(f"Camera matrix:\n{mtx}\n")
@@ -447,13 +468,35 @@ if __name__ == '__main__':
     # # print(f"Translation vectors:\n{tvecs}\n")
     # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
     # # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calibration_charuco2.yml")
+    # save_coefficients(mtx, dist, "calibration_charuco_1280x720.yml")
 
     # Load coefficients
     # mtx, dist = load_coefficients('calibration_chess.yml')
     # original = cv2.imread('images\\calibration_images\\calib50.jpg')
     # dst = cv2.undistort(original, mtx, dist, None, mtx)
     # cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
+
+    # get_charuco_calimgs(board_size=(5, 5), dict_name="DICT_4X4_50", resolution=(1280, 720), n_max=50, path="C:/Users/micha/Pulpit/test", min_time_inter=0.5)
+    # ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("C:/Users/micha/Pulpit/test", "DICT_4X4_50", (5, 5), 23, 30)
+    # print(f"ret:\n{ret}\n")
+    # print(f"Camera matrix:\n{mtx}\n")
+    # print(f"Distortion coefficients:\n{dist}\n")
+    # print(f"Rotation vectors:\n{rvecs}\n")
+    # print(f"Translation vectors:\n{tvecs}\n")
+    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # # Save coefficients into a file
+    # save_coefficients(mtx, dist, "calibration_charuco20.yml")
+
+    # Load coefficients
+    base = cv2.imread('C:/Users/micha/Pulpit/WIN_20220728_16_59_14_Pro.jpg')
+    cv2.imshow("Oryginał", base)
+    for file in ["calibration_charuco_1280x720.yml"]:
+        mtx, dist = load_coefficients(file)
+        undst = cv2.undistort(base, mtx, dist, None, mtx)
+        cv2.imshow(file, undst)
+        #cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
+
+    cv2.waitKey(0)
 
 # TODO: Print logi sygnalizujące obecny stan wykonywania kalibracji
 # TODO: Stworzyć test sprawdzający jakość kalibracji
@@ -462,3 +505,11 @@ if __name__ == '__main__':
 # TODO: Zrobić zabezpieczenia przed pustymi folderami, i zdjęciami które nie nadają się do kalibracji
 # TODO: Zrobić system sprawdzający jakość kalibracji i usuwające zjęcia negatywnie wpływające na nią
 # TODO: Naprawić funkcję kalibrującą 'calibrate_aruco()'
+
+# TODO: Poprawienie sposobu zapisu wszystkich funkcji tak aby działały również na innych systemach
+
+# TODO: Optymalizacja funkcji get_charuco_calimgs
+#       Podczas detekcji tablicy na obrazie w wysokiej rozdzielczości zbyt wiele zasobów jest zużywanych na wykrycie
+#       samej szachownicy przez co wartość FPS znacząco maleje. Potencjalne  rozwiązanie to downsizing przetważanego
+#       obrazu, wykonanie na nim detekcji a następnie przeskalowanie do normalnego rozmiaru. Źródło:
+#       https://stackoverflow.com/questions/15018620/findchessboardcorners-cannot-detect-chessboard-on-very-large-images-by-long-foca/15074774#15074774
