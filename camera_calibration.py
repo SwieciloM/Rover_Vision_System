@@ -7,7 +7,7 @@ import pathlib
 import time
 
 from constants import ARUCO_DICT, RESOLUTION
-from typing import Tuple, Union, Optional
+from typing import Tuple, List, Union, Optional
 from marker_detection import detect_on_image, draw_markers_on_image
 
 
@@ -177,22 +177,36 @@ def check_supported_resolutions(source: int = 0) -> None:
     cap.release()
 
 
-def save_coefficients(mtx, dist, path):
-    """Save the camera matrix and the distortion coefficients to given path/file."""
+def save_coefficients(mtx: np.ndarray, dist: np.ndarray, path: str) -> None:
+    """Save the camera matrix and the distortion coefficients to given path/file.
+
+    Args:
+        mtx (array-like): Camera matrix.
+        dist (array-like): Distortion coefficients.
+        path (str): Path to file where data will be saved (.yml is best to use)
+
+    """
+    # Opening the file storage to write
     cv_file = cv2.FileStorage(path, cv2.FILE_STORAGE_WRITE)
+
+    # Writing data
     cv_file.write('K', mtx)
     cv_file.write('D', dist)
-    # note you *release* you don't close() a FileStorage object
+
     cv_file.release()
 
 
-def load_coefficients(path):
-    """Loads camera matrix and distortion coefficients."""
-    # FILE_STORAGE_READ
+def load_coefficients(path: str) -> List[np.ndarray]:
+    """Loads camera matrix and distortion coefficients.
+
+    Args:
+        path (str): Path to .yml file.
+
+    """
+    # Opening the file storage to read
     cv_file = cv2.FileStorage(path, cv2.FILE_STORAGE_READ)
 
-    # note we also have to specify the type to retrieve other wise we only get a
-    # FileNode object back instead of a matrix
+    # Specifying the type to retrieve matrix instead of FileNode object
     camera_matrix = cv_file.getNode('K').mat()
     dist_matrix = cv_file.getNode('D').mat()
 
@@ -200,20 +214,21 @@ def load_coefficients(path):
     return [camera_matrix, dist_matrix]
 
 
-def get_aruco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='images\calibration_images', image_format='jpg', min_time_inter=0.5) -> None:
+def get_aruco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str] = None, source: Union[str, int] = 0, resolution: Optional[Tuple[int, int]] = None, n_max: int = 20, path: str = 'images\calibration_images', image_format: str = 'jpg', min_time_inter: float = 0.5) -> None:
     """Creates and saves calibration images containing ArUco board.
 
     Args:
         board_size (Tuple[float]): Number of rows and columns in the currently used board.
         dict_name (str, optional): Indicates the type of ArUco markers that are placed on board.
-        source (str or int): Path to video file or device index. If 0, primary camera (webcam) will be used.
-        n_img (int, optional): Maximum number of images to be captured.
+        source (str or int, optional): Path to video file or device index. If 0, primary camera (webcam) will be used.
+        resolution (Tuple[int, int], optional): Resolution of the captured video.
+        n_max (int, optional): Maximum number of images to be captured.
         path (str, optional): Path to destination where images will be saved.
         image_format (int, optional): Format of images like 'jpg', 'png' etc.
-        min_time_inter (float): Time in seconds determining minimal interval between two following images.
+        min_time_inter (float, optional): Time in seconds determining minimal interval between two following images.
 
     Raises:
-        ValueError: If given dict_name is not valid
+        ValueError: If given dict_name or path is not valid
         TypeError: If given source argument has wrong type
         SystemError: If program is unable to open video source
 
@@ -221,9 +236,27 @@ def get_aruco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='imag
     cv2.namedWindow("Preview")
     n_aruco = board_size[0]*board_size[1]
 
+    # Formatting the file extension
+    image_format = image_format.strip().strip(".").lower()
+
     # Check data type of source argument
     if isinstance(source, int) or isinstance(source, str):
         vc = cv2.VideoCapture(source)
+        # Check whether the camera resolution is to be changed
+        if resolution is not None and resolution[0] > 0 and resolution[1] > 0:
+            vc.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
+            vc.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+            width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            if resolution[0] != width_set or resolution[1] != height_set:
+                print("Specified camera resolution could not be set.")
+                print(f"{int(width_set)}x{int(height_set)} resolution is currently used.")
+            else:
+                print(f"Using the specified camera resolution {int(width_set)}x{int(height_set)}.")
+        else:
+            width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            print(f"Using the default camera resolution {int(width_set)}x{int(height_set)}.")
     else:
         raise TypeError("Source parameter does not accept {}".format(type(source)))
 
@@ -237,8 +270,9 @@ def get_aruco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='imag
     n = 0
     last_img_time = time.time()
 
+    print("Images acquisition started.")
     # Loop until there are no frames left or the required number of images has been reached
-    while rval and n < n_img:
+    while rval and n < n_max:
         # Find aruco corners
         aruco_corners, ids, _ = detect_on_image(frame, dict_name=dict_name, disp=False)
 
@@ -247,13 +281,14 @@ def get_aruco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='imag
 
         # If pattern found: save frame, change time of last record, increment saved pic counter
         if len(aruco_corners) == n_aruco and time_inter > min_time_inter:
-            cv2.imwrite("{}\\aruco_calib_{}.{}".format(path, n + 1, image_format), frame)
+            if not cv2.imwrite("{}\\aruco_calib_{}.{}".format(path, n + 1, image_format), frame):
+                raise ValueError("Image couldn't be saved! Check the path!")
             frame = draw_markers_on_image(frame, aruco_corners, ids)
             last_img_time = time.time()
             n += 1
 
         # Display actual number of saved images
-        display_text = f"Obtained patterns: {n}/{n_img}"
+        display_text = f"Obtained patterns: {n}/{n_max}"
         cv2.putText(frame, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
 
         # Update the output image
@@ -265,22 +300,26 @@ def get_aruco_calimgs(board_size, dict_name=None, source=0, n_img=20, path='imag
         if key == 27 or cv2.getWindowProperty("Preview", cv2.WND_PROP_VISIBLE) < 1:
             break
 
+    print("End of capture. Obtained {} out of {} images.".format(n, n_max))
+
     vc.release()
     cv2.destroyAllWindows()
 
 
-def get_chess_calimgs(board_size, source=0, n_img=20, path='images\calibration_images', image_format='jpg', min_time_inter=0.5) -> None:
-    """Creates and saves calibration images containing ChArUco board.
+def get_chess_calimgs(board_size: Tuple[float, float], source: Union[str, int] = 0, resolution: Optional[Tuple[int, int]] = None, n_max: int = 20, path: str = 'images\calibration_images', image_format: str = 'jpg', min_time_inter: float = 0.5) -> None:
+    """Creates and saves calibration images containing chessboard.
 
     Args:
         board_size (Tuple[float]): Number of rows and columns in the currently used board.
-        source (str or int): Path to video file or device index. If 0, primary camera (webcam) will be used.
-        n_img (int, optional): Maximum number of images to be captured.
+        source (str or int, optional): Path to video file or device index. If 0, primary camera (webcam) will be used.
+        resolution (Tuple[int, int], optional): Resolution of the captured video.
+        n_max (int, optional): Maximum number of images to be captured.
         path (str, optional): Path to destination where images will be saved.
-        image_format (int, optional): Format of images like 'jpg', 'png' etc.
-        min_time_inter (float): Time in seconds determining minimal interval between two following images.
+        image_format (int, optional): Format of images like 'jpg', '.png' etc.
+        min_time_inter (float, optional): Time in seconds determining minimal interval between two following images.
 
     Raises:
+        ValueError: If given path is not valid
         TypeError: If given source argument has wrong type
         SystemError: If program is unable to open video source
 
@@ -288,9 +327,27 @@ def get_chess_calimgs(board_size, source=0, n_img=20, path='images\calibration_i
     cv2.namedWindow("Preview")
     inner_size = (board_size[0]-1, board_size[1]-1)
 
+    # Formatting the file extension
+    image_format = image_format.strip().strip(".").lower()
+
     # Check data type of source argument
     if isinstance(source, int) or isinstance(source, str):
         vc = cv2.VideoCapture(source)
+        # Check whether the camera resolution is to be changed
+        if resolution is not None and resolution[0] > 0 and resolution[1] > 0:
+            vc.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
+            vc.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+            width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            if resolution[0] != width_set or resolution[1] != height_set:
+                print("Specified camera resolution could not be set.")
+                print(f"{int(width_set)}x{int(height_set)} resolution is currently used.")
+            else:
+                print(f"Using the specified camera resolution {int(width_set)}x{int(height_set)}.")
+        else:
+            width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            print(f"Using the default camera resolution {int(width_set)}x{int(height_set)}.")
     else:
         raise TypeError("Source parameter does not accept {}".format(type(source)))
 
@@ -304,8 +361,9 @@ def get_chess_calimgs(board_size, source=0, n_img=20, path='images\calibration_i
     n = 0
     last_img_time = time.time()
 
+    print("Images acquisition started.")
     # Loop until there are no frames left or the required number of images has been reached
-    while rval and n < n_img:
+    while rval and n < n_max:
         # Find chessboard and aruco corners
         ret, inner_corners = cv2.findChessboardCorners(frame, inner_size, None)
 
@@ -314,13 +372,14 @@ def get_chess_calimgs(board_size, source=0, n_img=20, path='images\calibration_i
 
         # If pattern found: save frame, change time of last record, increment saved pic counter
         if ret and time_inter > min_time_inter:
-            cv2.imwrite("{}\\chess_calib_{}.{}".format(path, n + 1, image_format), frame)
+            if not cv2.imwrite("{}\\chess_calib_{}.{}".format(path, n + 1, image_format), frame):
+                raise ValueError("Image couldn't be saved! Check the path!")
             frame = cv2.drawChessboardCorners(frame, inner_size, inner_corners, ret)
             last_img_time = time.time()
             n += 1
 
         # Display actual number of saved images
-        display_text = f"Obtained patterns: {n}/{n_img}"
+        display_text = f"Obtained patterns: {n}/{n_max}"
         cv2.putText(frame, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
 
         # Update the output image
@@ -331,6 +390,8 @@ def get_chess_calimgs(board_size, source=0, n_img=20, path='images\calibration_i
         # Exit if ESC key button or X window button pressed
         if key == 27 or cv2.getWindowProperty("Preview", cv2.WND_PROP_VISIBLE) < 1:
             break
+
+    print("End of capture. Obtained {} out of {} images.".format(n, n_max))
 
     vc.release()
     cv2.destroyAllWindows()
@@ -346,11 +407,11 @@ def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str
         resolution (Tuple[int, int], optional): Resolution of the captured video.
         n_max (int, optional): Maximum number of images to be captured.
         path (str, optional): Path to destination where images will be saved.
-        image_format (int, optional): Format of images like 'jpg', 'png' etc.
+        image_format (int, optional): Format of images like 'jpg', '.png' etc.
         min_time_inter (float, optional): Time in seconds determining minimal interval between two following images.
 
     Raises:
-        ValueError: If given dict_name is not valid
+        ValueError: If given dict_name or path is not valid
         TypeError: If given source argument has wrong type
         SystemError: If program is unable to open video source
 
@@ -405,7 +466,8 @@ def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str
 
         # If pattern found: save frame, change time of last record, increment saved pic counter
         if ret and len(aruco_corners) == n_aruco and time_inter > min_time_inter:
-            cv2.imwrite("{}\\charuco_calib_{}.{}".format(path, n + 1, image_format), frame)
+            if not cv2.imwrite("{}\\charuco_calib_{}.{}".format(path, n + 1, image_format), frame):
+                raise ValueError("Image couldn't be saved! Check the path!")
             frame = cv2.drawChessboardCorners(frame, inner_size, inner_corners, ret)
             frame = draw_markers_on_image(frame, aruco_corners, ids)
             last_img_time = time.time()
@@ -431,45 +493,6 @@ def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str
 
 
 if __name__ == '__main__':
-    # Load the input image fom disk
-    # path = 'real_images//test5.jpg'
-    # dict = "DICT_4X4_50"
-    # image = cv2.imread(path)
-
-    # get_aruco_calimgs(board_size=(7, 5), n_max=20, path="images\\calibration_images\\1")
-    # get_chess_calimgs(board_size=(8, 7), n_max=20, path="images\\calibration_images\\2")
-    # get_charuco_calimgs(board_size=(5, 5), dict_name="DICT_4X4_50", resolution=(1280, 720), n_max=150, path="images\\calibration_images\\3", min_time_inter=0.5)
-
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images\\calibration_images\\1", "DICT_6X6_50", (7, 5), 26.5, 3)
-    # print(f"ret:\n{ret}\n")
-    # print(f"Camera matrix:\n{mtx}\n")
-    # print(f"Distortion coefficients:\n{dist}\n")
-    # # print(f"Rotation vectors:\n{rvecs}\n")
-    # # print(f"Translation vectors:\n{tvecs}\n")
-    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calibration_aruco2.yml")
-    #
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images\\calibration_images\\2", (7, 8), 24)
-    # print(f"ret:\n{ret}\n")
-    # print(f"Camera matrix:\n{mtx}\n")
-    # print(f"Distortion coefficients:\n{dist}\n")
-    # # print(f"Rotation vectors:\n{rvecs}\n")
-    # # print(f"Translation vectors:\n{tvecs}\n")
-    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calibration_chess2.yml")
-
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("images\\calibration_images\\3", "DICT_4X4_50", (5, 5), 23, 30)
-    # print(f"ret:\n{ret}\n")
-    # print(f"Camera matrix:\n{mtx}\n")
-    # print(f"Distortion coefficients:\n{dist}\n")
-    # # print(f"Rotation vectors:\n{rvecs}\n")
-    # # print(f"Translation vectors:\n{tvecs}\n")
-    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calibration_charuco_1280x720.yml")
-
     # Load coefficients
     # mtx, dist = load_coefficients('calibration_chess.yml')
     # original = cv2.imread('images\\calibration_images\\calib50.jpg')
@@ -487,11 +510,34 @@ if __name__ == '__main__':
     # # Save coefficients into a file
     # save_coefficients(mtx, dist, "calibration_charuco20.yml")
 
+    # get_aruco_calimgs(board_size=(5, 7), dict_name="DICT_6X6_1000", resolution=(1280, 720), n_max=50, path="images/calibration_images/aruco", min_time_inter=0.5)
+    # ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images/calibration_images/aruco", "DICT_6X6_1000", (5, 7), 26, 3)
+    # # print(f"ret:\n{ret}\n")
+    # print(f"Camera matrix:\n{mtx}\n")
+    # # print(f"Distortion coefficients:\n{dist}\n")
+    # # print(f"Rotation vectors:\n{rvecs}\n")
+    # # print(f"Translation vectors:\n{tvecs}\n")
+    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # # Save coefficients into a file
+    # save_coefficients(mtx, dist, "calibration_aruco_1280x720.yml")
+
+    # get_chess_calimgs(board_size=(8, 7), resolution=(1280, 720), n_max=50, path="images/calibration_images/chess", min_time_inter=0.5)
+    # ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images/calibration_images/chess", (8, 7), 24)
+    # # print(f"ret:\n{ret}\n")
+    # print(f"Camera matrix:\n{mtx}\n")
+    # # print(f"Distortion coefficients:\n{dist}\n")
+    # # print(f"Rotation vectors:\n{rvecs}\n")
+    # # print(f"Translation vectors:\n{tvecs}\n")
+    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # # Save coefficients into a file
+    # save_coefficients(mtx, dist, "calibration_chess_1280x720.yml")
+
     # Load coefficients
-    base = cv2.imread('C:/Users/micha/Pulpit/WIN_20220728_16_59_14_Pro.jpg')
+    base = cv2.imread('images/test_images/Webcam sample 1280x720.jpg')
     cv2.imshow("Oryginał", base)
-    for file in ["calibration_charuco_1280x720.yml"]:
+    for file in ["calibration_charuco_1280x720.yml", "calibration_aruco_1280x720.yml", "calibration_chess_1280x720.yml"]:
         mtx, dist = load_coefficients(file)
+        print(type(mtx))
         undst = cv2.undistort(base, mtx, dist, None, mtx)
         cv2.imshow(file, undst)
         #cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)

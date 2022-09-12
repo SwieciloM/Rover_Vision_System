@@ -90,5 +90,5 @@ if __name__ == '__main__':
     generate_marker(args["type"], args["id"], args["sidepix"], args["borderbit"], args["no_disp"], args["no_save"], args["path"])
 
     # Example:
-    # generate_marker('DICT_5X5_250', 10, save=True)
+    # generate_marker('DICT_5X5_100', 80, save=True)
     # aruco_marker_generation.py -t DICT_5X5_100 -i 80
