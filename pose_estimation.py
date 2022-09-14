@@ -10,6 +10,35 @@ from marker_detection import detect_on_image
 from typing import Optional, Union, Tuple
 
 
+def isRotationMatrix(R):
+    """Checks if a matrix is a valid rotation matrix."""
+    Rt = np.transpose(R)
+    shouldBeIdentity = np.dot(Rt, R)
+    I = np.identity(3, dtype=R.dtype)
+    n = np.linalg.norm(I - shouldBeIdentity)
+    return n < 1e-6
+
+
+def rotationMatrixToEulerAngles(R):
+    """Calculate rotation matrix to euler angles. The result is the same as MATLAB except the order of the euler angles (x and z are swapped)."""
+    assert (isRotationMatrix(R))
+
+    sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
+
+    singular = sy < 1e-6
+
+    if not singular:
+        x = math.atan2(R[2, 1], R[2, 2])
+        y = math.atan2(-R[2, 0], sy)
+        z = math.atan2(R[1, 0], R[0, 0])
+    else:
+        x = math.atan2(-R[1, 2], R[1, 1])
+        y = math.atan2(-R[2, 0], sy)
+        z = 0
+
+    return np.array([x, y, z])
+
+
 def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, float], mtx: np.ndarray, dist: np.array, dict_name: Optional[str] = None, disp: bool = True, max_dim: Optional[Tuple[int, int]] = None):
     """Estimates the pose of each individual marker on the image."""
     # Detect aruco markers
@@ -134,41 +163,28 @@ def estimate_camera_pose_on_image(image: np.ndarray, marker_len: Union[int, floa
         cv2.waitKey(0)
 
 
-def estimate_camera_pose_on_video(marker_len: Union[int, float], mtx: np.ndarray, dist: np.array, source: Union[str, int] = 0, dict_name: Optional[str] = None, max_dim: Optional[Tuple[int, int]] = None):
+def estimate_camera_pose_on_video(marker_len: Union[int, float], mtx: np.ndarray, dist: np.array, source: Union[str, int] = 0, dict_name: Optional[str] = None, max_dim: Optional[Tuple[int, int]] = None, resolution: Optional[Tuple[int, int]] = None):
     """Estimates the camera posture using single ArUco marker on the image."""
-    def isRotationMatrix(R):
-        """Checks if a matrix is a valid rotation matrix."""
-        Rt = np.transpose(R)
-        shouldBeIdentity = np.dot(Rt, R)
-        I = np.identity(3, dtype=R.dtype)
-        n = np.linalg.norm(I - shouldBeIdentity)
-        return n < 1e-6
-
-    def rotationMatrixToEulerAngles(R):
-        """Calculate rotation matrix to euler angles. The result is the same as MATLAB except the order of the euler angles (x and z are swapped)."""
-        assert (isRotationMatrix(R))
-
-        sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
-
-        singular = sy < 1e-6
-
-        if not singular:
-            x = math.atan2(R[2, 1], R[2, 2])
-            y = math.atan2(-R[2, 0], sy)
-            z = math.atan2(R[1, 0], R[0, 0])
-        else:
-            x = math.atan2(-R[1, 2], R[1, 1])
-            y = math.atan2(-R[2, 0], sy)
-            z = 0
-
-        return np.array([x, y, z])
-
-
     cv2.namedWindow("Preview")
 
     # Check data type of source argument
     if isinstance(source, int) or isinstance(source, str):
         vc = cv2.VideoCapture(source)
+        # Check whether the camera resolution is to be changed
+        if resolution is not None and resolution[0] > 0 and resolution[1] > 0:
+            vc.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
+            vc.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
+            width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            if resolution[0] != width_set or resolution[1] != height_set:
+                print("Specified camera resolution could not be set.")
+                print(f"{int(width_set)}x{int(height_set)} resolution is currently used.")
+            else:
+                print(f"Using the specified camera resolution {int(width_set)}x{int(height_set)}.")
+        else:
+            width_set = vc.get(cv2.CAP_PROP_FRAME_WIDTH)
+            height_set = vc.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            print(f"Using the default camera resolution {int(width_set)}x{int(height_set)}.")
     else:
         raise TypeError("Source parameter does not accept {}".format(type(source)))
 
@@ -252,65 +268,14 @@ def estimate_camera_pose_on_video(marker_len: Union[int, float], mtx: np.ndarray
 
 
 if __name__ == '__main__':
-    # cv2.namedWindow("Preview")
-    # vc = cv2.VideoCapture(0)
-    # mtx, dist = load_coefficients('calibration_chess.yml')
-    #
-    # if vc.isOpened():
-    #     rval, frame = vc.read()
-    #
-    # # Loop until there are no frames left
-    # while rval:
-    #     frame = estimate_pose_on_image(frame, 26.5, mtx, dist, dict_name=None, disp=False)
-    #     # Update the output image
-    #     cv2.imshow("Preview", frame)
-    #     rval, frame = vc.read()
-    #
-    #     key = cv2.waitKey(10)
-    #     # Exit if ESC key button or X window button pressed
-    #     if key == 27 or cv2.getWindowProperty("Preview", cv2.WND_PROP_VISIBLE) < 1:
-    #         break
-    #
-    # vc.release()
-    # cv2.destroyAllWindows()
 
-
-
-
-
-
-    mtx, dist = load_coefficients('calibration_charuco_1280x720.yml')
-    estimate_camera_pose_on_video(100, mtx, dist, 0)
+    mtx, dist = load_coefficients('calibration_aruco_1280x720.yml')
+    estimate_camera_pose_on_video(100, mtx, dist, 0, resolution=(1280, 720))
     #estimate_camera_pose_on_video(26.5, mtx, dist)
     image = cv2.imread('images\\calibration_images\\1\\aruco_calib_20.jpg')
     print(np.shape(image))
     print(estimate_markers_pose_on_image(image, 26.5, mtx, dist, dict_name=None, disp=True))
     image = cv2.imread('images\\test_images\\camera_pos_test_3.jpg')
     estimate_camera_pose_on_image(image, 26.5, mtx, dist, dict_name=None, disp=True)
-
-
-
-
-
-    # # Load coefficients
-    # mtx, dist = load_coefficients('calibration_chess.yml')
-    # original = cv2.imread('images\\calibration_images\\2\\chess_calib_20.jpg')
-    # cv2.imshow('Oryginalne zdjecie chess', original)
-    # undst = cv2.undistort(original, mtx, dist, None, mtx)
-    # cv2.imshow('Odnieksztalcone zdjecie chess', undst)
-    #
-    # mtx, dist = load_coefficients('calibration_charuco.yml')
-    # #original = cv2.imread('images\\calibration_images\\3\\charuco_calib_20.jpg')
-    # cv2.imshow('Oryginalne zdjecie charuco', original)
-    # undst = cv2.undistort(original, mtx, dist, None, mtx)
-    # cv2.imshow('Odnieksztalcone zdjecie charuco', undst)
-    #
-    # mtx, dist = load_coefficients('calibration_aruco.yml')
-    # #original = cv2.imread('images\\calibration_images\\1\\aruco_calib_20.jpg')
-    # cv2.imshow('Oryginalne zdjecie aruco', original)
-    # undst = cv2.undistort(original, mtx, dist, None, mtx)
-    # cv2.imshow('Odnieksztalcone zdjecie aruco', undst)
-    #
-    # cv2.waitKey(0)
 
 # TODO: Upewnić się co ma zwracać funkcja 'estimate_pose_on_image()'

@@ -537,7 +537,6 @@ if __name__ == '__main__':
     cv2.imshow("Oryginał", base)
     for file in ["calibration_charuco_1280x720.yml", "calibration_aruco_1280x720.yml", "calibration_chess_1280x720.yml"]:
         mtx, dist = load_coefficients(file)
-        print(type(mtx))
         undst = cv2.undistort(base, mtx, dist, None, mtx)
         cv2.imshow(file, undst)
         #cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
