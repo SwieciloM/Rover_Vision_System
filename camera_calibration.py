@@ -44,7 +44,7 @@ def calibrate_chessboard(path: str, board_size: Tuple[int, int], square_len: Uni
             subpix_corners = cv2.cornerSubPix(gray, chess_corners, (11, 11), (-1, -1), criteria)
             imgp_list.append(subpix_corners)
 
-    if len(objp_list) > 0:
+    if len(objp_list):
         # Calibrate camera
         results = cv2.calibrateCameraExtended(objp_list, imgp_list, gray.shape[::-1], None, None)
         ret, mtx, dist, rvecs, tvecs, _, _, error = results
@@ -546,10 +546,10 @@ if __name__ == '__main__':
 # TODO: Print logi sygnalizujące obecny stan wykonywania kalibracji
 # TODO: Stworzyć test sprawdzający jakość kalibracji
 # TODO: Uporządkować kod i dopisać komentarze/docstringi
-# TODO: Sprawdzić różnicę w obrazach przed kalibracją i po
 # TODO: Zrobić zabezpieczenia przed pustymi folderami, i zdjęciami które nie nadają się do kalibracji
 # TODO: Zrobić system sprawdzający jakość kalibracji i usuwające zjęcia negatywnie wpływające na nią
 # TODO: Naprawić funkcję kalibrującą 'calibrate_aruco()'
+# TODO: Dodoać argparsera z możliwością wyboru danej funkcji
 
 # TODO: Poprawienie sposobu zapisu wszystkich funkcji tak aby działały również na innych systemach
 
