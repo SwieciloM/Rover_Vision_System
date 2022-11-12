@@ -183,7 +183,7 @@ def save_coefficients(mtx: np.ndarray, dist: np.ndarray, path: str) -> None:
     Args:
         mtx (array-like): Camera matrix.
         dist (array-like): Distortion coefficients.
-        path (str): Path to file where data will be saved (.yml is best to use)
+        path (str): Path to file where data will be saved (.yml is best to use).
 
     """
     # Opening the file storage to write

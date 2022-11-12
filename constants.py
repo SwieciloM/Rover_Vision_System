@@ -1,5 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
 import cv2
 
 # Names of each possible ArUco dict OpenCV supports

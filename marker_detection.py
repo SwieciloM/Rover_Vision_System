@@ -8,7 +8,7 @@ from constants import ARUCO_DICT
 from typing import Tuple, Union, Optional
 
 
-def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_rejected: bool = False, show_dict: bool = True, preview_resolution: Optional[Tuple[int, int]] = None) -> Tuple[np.array, np.array, np.array]:
+def detect_on_image(image: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_rejected: bool = False, show_dict: bool = True, preview_resolution: Optional[Tuple[int, int]] = None) -> Tuple[Tuple, np.array, Tuple]:
     """Detects & displays aruco marker on the given image.
 
     Args:
@@ -339,12 +339,12 @@ def draw_dict_on_image(image: np.ndarray, det_type: str, dict_name: str) -> np.n
 
 if __name__ == '__main__':
     # Load the input image fom disk
-    path = 'images\\test_images\\test5.jpg'
-    dict = "DICT_4X4_50"
-    image = cv2.imread(path)
+    # path = 'images\\test_images\\test5.jpg'
+    # dict = "DICT_4X4_50"
+    # image = cv2.imread(path)
 
     #detect_on_image(image, disp=True, show_rejected=False, show_dict=True, preview_resolution=(1400, 700))
     #detect_on_video("C:\\Users\\micha\\Pulpit\\Życie prywatne\\Filmy\\Drift1.mp4", "DICT_4X4_50", show_rejected=True)
-    detect_on_video(resolution=(1280, 720))
+    detect_on_video(0, resolution=(1400, 700))
 
 # TODO: Dodoać argparsera z możliwością wyboru danej funkcji

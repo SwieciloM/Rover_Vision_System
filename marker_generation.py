@@ -5,9 +5,9 @@ import cv2
 import numpy as np
 import argparse
 
+from typing import Optional
 from pathlib import Path
 from constants import ARUCO_DICT
-from typing import Optional
 
 
 def generate_marker(dict_name: str, id: int, side_pixels: int = 420, border_bits: int = 1, disp: bool = True, save: bool = True, path: Optional[str] = None) -> np.ndarray:
@@ -71,10 +71,9 @@ if __name__ == '__main__':
     # Creating an ArgumentParser object
     ap = argparse.ArgumentParser()
 
+    # Function needed for arguments with default NoneType value
     def none_or_str(value):
-        if value == 'None':
-            return None
-        return value
+        return None if value == 'None' else value
 
     # Command line arguments:
     ap.add_argument("-t", "--type", type=str, required=True, help="type of ArUCo tag to generate")
