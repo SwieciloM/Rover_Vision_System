@@ -3,11 +3,10 @@
 
 import cv2
 import numpy as np
-import math
-
+from math import degrees, sqrt, atan2
+from typing import Optional, Union, Tuple
 from camera_calibration import load_coefficients
 from marker_detection import detect_on_image
-from typing import Optional, Union, Tuple
 
 
 def is_rotation_matrix(rot_mtx: np.ndarray) -> bool:
@@ -40,52 +39,86 @@ def rotation_matrix_to_euler_angles(rot_mtx: np.ndarray) -> np.array:
     if not is_rotation_matrix(rot_mtx):
         raise ValueError("Object is not a rotation matrix")
 
-    sy = math.sqrt(rot_mtx[0, 0] * rot_mtx[0, 0] + rot_mtx[1, 0] * rot_mtx[1, 0])
+    sy = sqrt(rot_mtx[0, 0] * rot_mtx[0, 0] + rot_mtx[1, 0] * rot_mtx[1, 0])
     is_singular = sy < 1e-6
 
     if not is_singular:
-        x_rot = math.atan2(rot_mtx[2, 1], rot_mtx[2, 2])
-        y_rot = math.atan2(-rot_mtx[2, 0], sy)
-        z_rot = math.atan2(rot_mtx[1, 0], rot_mtx[0, 0])
+        x_rot = atan2(rot_mtx[2, 1], rot_mtx[2, 2])
+        y_rot = atan2(-rot_mtx[2, 0], sy)
+        z_rot = atan2(rot_mtx[1, 0], rot_mtx[0, 0])
     else:
-        x_rot = math.atan2(-rot_mtx[1, 2], rot_mtx[1, 1])
-        y_rot = math.atan2(-rot_mtx[2, 0], sy)
+        x_rot = atan2(-rot_mtx[1, 2], rot_mtx[1, 1])
+        y_rot = atan2(-rot_mtx[2, 0], sy)
         z_rot = 0
 
     return np.array([x_rot, y_rot, z_rot])
 
 
-def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, float], mtx: np.ndarray, dist: np.array, dict_name: Optional[str] = None, disp: bool = True, max_dim: Optional[Tuple[int, int]] = None) -> Tuple[Tuple, np.array, np.array, np.array]:
-    """Estimates the pose of each individual marker on the image."""
+def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, float], cam_mtx: np.ndarray, dist_coefs: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_values: bool = True, prev_res: Optional[Tuple[int, int]] = None) -> Tuple[Tuple, np.array, np.array, np.array]:
+    """Estimates the pose of each individual marker on the image.
+
+    Markers must be of the same size and type in order to assess their position correctly.
+
+    Args:
+        image (np.ndarray): Image to be analyzed.
+        marker_len (int or float): Side length of the marker in meters.
+        cam_mtx (np.ndarray): Camera matrix.
+        dist_coefs (np.ndarray): Distortion coefficients.
+        dict_name (str, optional): Type of ArUco marker. Passing it may speed up the program.
+        disp (bool, optional): Determines if the result image will be displayed.
+        show_values (bool, optional): When it is True, the translation [cm] and rotation [deg] values are displayed.
+        prev_res (Tuple[int, int], optional): Resolution of the displayed image.
+
+    Returns:
+        Tuple: Corners, IDs, Rotation and Translation vectors of each marker.
+
+    """
     # Detect aruco markers
-    corners_list, ids, r = detect_on_image(image=image, dict_name=dict_name, disp=False)
+    corners_list, ids, _ = detect_on_image(image=image, dict_name=dict_name, disp=False)
 
     rvec_list, tvec_list = [], []
-    # Check if markers were detected
-    if len(corners_list) > 0:
-        # Loop over every detected marker's corners
-        for corners in corners_list:
-            # Estimate pose of each marker and return the values rvec and tvec
-            rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(corners, marker_len, mtx, dist)
-            # Draw a square around the markers
-            cv2.aruco.drawDetectedMarkers(image, [corners])
-            # Draw axis of the marker
-            cv2.aruco.drawAxis(image, mtx, dist, rvec, tvec, marker_len/2)
-            rvec_list.append(rvec)
-            tvec_list.append(tvec)
 
+    # Loop over every detected marker's corners
+    for corners in corners_list:
+        # Estimate pose of the marker to obtain rotation and translation vectors
+        rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(corners, marker_len, cam_mtx, dist_coefs)
+        rvec_list.append(rvec)
+        tvec_list.append(tvec)
+
+    # Prepare and display the final image
     if disp:
-        if max_dim is not None:
-            # Max image dimensions
-            max_width, max_height = max_dim
+        # Loop over every detected marker's data
+        for corners, id, rvec, tvec in zip(corners_list, ids, rvec_list, tvec_list):
+            rvec = rvec[0][0]
+            tvec = tvec[0][0]
 
-            # Current dimensions
-            height, width, _ = np.shape(image)
+            # Draw a square and axis of the marker
+            cv2.aruco.drawDetectedMarkers(image, [corners])
+            cv2.aruco.drawAxis(image, cam_mtx, dist_coefs, rvec, tvec, marker_len/2)
 
-            # Check if any of the image dim is bigger than max dim
-            if width > max_width or height > max_height:
-                new_dim = (max_height, max_width)
-                image = cv2.resize(image, new_dim)
+            if show_values:
+                # Obtain the rotation matrix to get euler angles
+                rot_mtx_t = cv2.Rodrigues(rvec)[0].T
+                roll, pitch, yaw = rotation_matrix_to_euler_angles(rot_mtx_t)
+
+                # Text to display
+                tra_text = "({:.0f}, {:.0f}, {:.0f})".format(tvec[0]/10, tvec[1]/10, tvec[2]/10)
+                rot_text = "({:.0f}, {:.0f}, {:.0f})".format(degrees(roll), degrees(pitch), degrees(yaw))
+
+                # Parameters for correct text display
+                x_txt, y_txt = [int(min(i)) for i in zip(*corners[0])]
+                size_marker = [int(max(i) - min(i)) for i in zip(*corners[0])]
+                font_scale = sum(size_marker)/450
+                offset = int(size_marker[1]/10)
+                color = (19, 111, 216)
+
+                # Draw rotation and translation values
+                cv2.putText(image, tra_text, (x_txt, y_txt+4*offset), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2)
+                cv2.putText(image, rot_text, (x_txt, y_txt+7*offset), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2)
+
+        # Resize final image
+        if prev_res is not None and prev_res[0] > 0 and prev_res[1] > 0:
+            image = cv2.resize(image, prev_res)
 
         # Show the output image
         cv2.imshow("Detection result", image)
@@ -95,7 +128,7 @@ def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, flo
 
 
 def estimate_markers_pose_on_video(marker_len: Union[int, float], mtx: np.ndarray, dist: np.array, source: Union[str, int] = 0, dict_name: Optional[str] = None, max_dim: Optional[Tuple[int, int]] = None, resolution: Optional[Tuple[int, int]] = None) -> None:
-    """Estimates the camera posture using single ArUco marker on the image."""
+    """Estimates the pose of each individual marker on the video."""
     cv2.namedWindow("Preview")
 
     # Check data type of source argument
@@ -152,7 +185,7 @@ def estimate_markers_pose_on_video(marker_len: Union[int, float], mtx: np.ndarra
             # Get position and attitude of rhe camera respt to the marker
             rot_cam = [roll, pitch, yaw]
             display_text2 = f"X = {int(tvec[0])}   Y = {int(tvec[1])}   Z = {int(tvec[2])}"
-            display_text3 = f"R = {int(math.degrees(rot_cam[0]))}   P = {int(math.degrees(rot_cam[1]))}   Y = {int(math.degrees(rot_cam[2]))}"
+            display_text3 = f"R = {int(degrees(rot_cam[0]))}   P = {int(degrees(rot_cam[1]))}   Y = {int(degrees(rot_cam[2]))}"
 
             print(display_text2)
             print(display_text3)
@@ -168,7 +201,7 @@ def estimate_markers_pose_on_video(marker_len: Union[int, float], mtx: np.ndarra
             # Get position and attitude of rhe camera respt to the marker
             rot_cam = [roll, pitch, yaw]
             display_text2 = f"X = {int(pos_cam[0])}   Y = {int(pos_cam[1])}   Z = {int(pos_cam[2])}"
-            display_text3 = f"R = {int(math.degrees(rot_cam[0]))}   P = {int(math.degrees(rot_cam[1]))}   Y = {int(math.degrees(rot_cam[2]))}"
+            display_text3 = f"R = {int(degrees(rot_cam[0]))}   P = {int(degrees(rot_cam[1]))}   Y = {int(degrees(rot_cam[2]))}"
 
             print(display_text2)
             print(display_text3)
@@ -320,7 +353,7 @@ def estimate_camera_pose_on_video(marker_len: Union[int, float], mtx: np.ndarray
             # Get position and attitude of rhe camera respt to the marker
             rot_cam = [roll, pitch, yaw]
             display_text2 = f"X = {int(pos_cam[0])}   Y = {int(pos_cam[1])}   Z = {int(pos_cam[2])}"
-            display_text3 = f"R = {int(math.degrees(rot_cam[0]))}   P = {int(math.degrees(rot_cam[1]))}   Y = {int(math.degrees(rot_cam[2]))}"
+            display_text3 = f"R = {int(degrees(rot_cam[0]))}   P = {int(degrees(rot_cam[1]))}   Y = {int(degrees(rot_cam[2]))}"
         elif num_markers > 1:
             display_text1 = "More than one marker detected"
             display_text2 = "X =   Y =   Z = "
@@ -373,11 +406,11 @@ if __name__ == '__main__':
     # Find the ArUco markers inside each image
     for img in img_dir.glob(f'*.jpg'):  # Tu trzeba dać sprawdzanie czy ta lokalizacja nie będzie pusta
         image = cv2.imread(str(img))
-        #estimate_markers_pose_on_image(image, 100, mtx, dist)
-    estimate_markers_pose_on_image(cv2.imread(r'C:\Users\micha\Pulpit\Test_aruco\WIN_20221111_20_03_22_Pro.jpg'), 100, mtx, dist)
-    estimate_markers_pose_on_image(cv2.imread(r'C:\Users\micha\Pulpit\Test_aruco\WIN_20221111_19_41_15_Pro.jpg'), 100, mtx, dist)
+        estimate_markers_pose_on_image(image, 100, mtx, dist, disp=True)
+    estimate_markers_pose_on_image(cv2.imread(r'C:\Users\micha\Pulpit\Test_aruco\WIN_20221111_20_03_22_Pro.jpg'), 100, mtx, dist, disp=True)
+    #estimate_markers_pose_on_image(cv2.imread(r'C:\Users\micha\Pulpit\Test_aruco\WIN_20221111_19_41_15_Pro.jpg'), 100, mtx, dist)
 
-    estimate_markers_pose_on_video(100, mtx, dist, 0, resolution=(1280, 720))
+    #estimate_markers_pose_on_video(100, mtx, dist, 0, resolution=(1280, 720))
 
 
     #estimate_camera_pose_on_video(100, mtx, dist, 0, resolution=(1280, 720))
@@ -389,4 +422,4 @@ if __name__ == '__main__':
     # estimate_camera_pose_on_image(image, 26.5, mtx, dist, dict_name=None, disp=True)
 
 # TODO: Upewnić się co ma zwracać funkcja 'estimate_pose_on_image()'
-# TOdO: Sprawdzć czas miedzy obrazem w gray scale a kolorowym
+# TODO: Sprawdzć czas miedzy obrazem w gray scale a kolorowym

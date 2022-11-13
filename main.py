@@ -14,6 +14,8 @@ def print_hi(name):
     print("--------------------------")
     print(len(aruco_dict.bytesList))
 
+    print(bool(1))
+
     def none_or_str(value):
         if value == 'None':
             return None
