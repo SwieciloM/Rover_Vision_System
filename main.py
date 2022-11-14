@@ -22,9 +22,7 @@ def print_hi(name):
         # we will be subtracting it to get more accurate result
         fps = 1 / (new_frame_time - prev_frame_time)
         prev_frame_time = new_frame_time
-
         fps = str(int(fps))
-
         # putting the FPS count on the frame
         cv2.putText(frame, fps, (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (100, 255, 0), 3, cv2.LINE_AA)
         cv2.imshow("Preview", frame)

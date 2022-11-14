@@ -97,7 +97,7 @@ def rotation_matrix_to_euler_angles(rot_mtx: np.ndarray) -> np.array:
 
 
 def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, float], cam_mtx: np.ndarray, dist_coefs: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_values: bool = False, show_ids: bool = False, show_axis: bool = True, return_final: bool = False, prev_res: Optional[Tuple[int, int]] = None) -> Tuple[np.ndarray, Tuple, np.ndarray, np.ndarray, np.ndarray]:
-    """Estimates the pose of each individual marker on the image.
+    """Estimates the position of each individual marker on the image.
 
     Markers must be of the same size and type in order to assess their position correctly.
 
@@ -180,7 +180,7 @@ def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, flo
 
 
 def estimate_markers_pose_on_video(source: Union[str, int], marker_len: Union[int, float], cam_mtx: np.ndarray, dist_coefs: np.ndarray, dict_name: Optional[str] = None, show_values: bool = False, show_ids: bool = False, show_axis: bool = True, src_res: Optional[Tuple[int, int]] = None, prev_res: Optional[Tuple[int, int]] = None) -> None:
-    """Estimates the pose of each individual marker on the video.
+    """Estimates the position of each individual marker on the video.
 
     Markers must be of the same size and type in order to assess their position correctly.
 
@@ -227,8 +227,26 @@ def estimate_markers_pose_on_video(source: Union[str, int], marker_len: Union[in
     cv2.destroyAllWindows()
 
 
-def estimate_camera_pose_on_image(image: np.ndarray, marker_len: Union[int, float], mtx: np.ndarray, dist: np.array, dict_name: Optional[str] = None, disp: bool = True, max_dim: Optional[Tuple[int, int]] = None):
-    """Estimates the camera posture using single ArUco marker on the image."""
+def estimate_camera_pose_on_image(image: np.ndarray, marker_len: Union[int, float], cam_mtx: np.ndarray, dist_coefs: np.array, dict_name: Optional[str] = None, disp: bool = True, show_values: bool = False, show_id: bool = False, show_axis: bool = True, return_final: bool = False, prev_res: Optional[Tuple[int, int]] = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Estimates the camera position using single ArUco marker on the image.
+
+    Args:
+        image (np.ndarray): Image to be analyzed.
+        marker_len (int or float): Side length of the marker in millimeters.
+        cam_mtx (np.ndarray): Camera matrix.
+        dist_coefs (np.ndarray): Distortion coefficients.
+        dict_name (str, optional): Type of ArUco marker. Passing it may speed up the program.
+        disp (bool, optional): Determines if the result image will be displayed.
+        show_values (bool, optional): When it is True, the translation [cm] and rotation [deg] values are displayed.
+        show_id (bool, optional): When it is True, marker id is displayed.
+        show_axis (bool, optional): When it is True, marker's axis are displayed.
+        return_final (bool, optional): When it is True, the final image is returned.
+        prev_res (Tuple[int, int], optional): Resolution of the displayed image.
+
+    Returns:
+        Tuple: Image, Rotation and Translation vector of camera position.
+
+    """
     # Detect aruco markers
     corners_list, _, _ = detect_on_image(image=image, dict_name=dict_name, disp=False)
 
@@ -239,7 +257,6 @@ def estimate_camera_pose_on_image(image: np.ndarray, marker_len: Union[int, floa
         R_flip[0, 0] = 1.0
         R_flip[1, 1] = -1.0
         R_flip[2, 2] = -1.0
-
 
         # Estimate pose of each marker and return the values rvec and tvec
         rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(corners_list[0], marker_len, mtx, dist)
@@ -266,21 +283,11 @@ def estimate_camera_pose_on_image(image: np.ndarray, marker_len: Union[int, floa
         pass
 
     if disp:
-        if max_dim is not None:
-            # Max image dimensions
-            max_width, max_height = max_dim
-
-            # Current dimensions
-            height, width, _ = np.shape(image)
-
-            # Check if any of the image dim is bigger than max dim
-            if width > max_width or height > max_height:
-                new_dim = (max_height, max_width)
-                image = cv2.resize(image, new_dim)
-
         # Show the output image
         cv2.imshow("Detection result", image)
         cv2.waitKey(0)
+
+    return image, rvec, tvec
 
 
 def estimate_camera_pose_on_video(marker_len: Union[int, float], mtx: np.ndarray, dist: np.array, source: Union[str, int] = 0, dict_name: Optional[str] = None, max_dim: Optional[Tuple[int, int]] = None, resolution: Optional[Tuple[int, int]] = None):
@@ -417,7 +424,10 @@ def test_estimate_markers_pose_on_video(source: Union[str, int], marker_len: Uni
     else:
         raise SystemError("Unable to open video source: {}".format(source))
 
-    # Loop until there are no frames left
+    import time
+    prev_frame_time = 0
+    new_frame_time = 0
+
     while rval:
         # Detect aruco markers
         corners_list, _, _ = detect_on_image(image=frame, dict_name=dict_name, disp=False)
@@ -465,6 +475,12 @@ def test_estimate_markers_pose_on_video(source: Union[str, int], marker_len: Uni
             cv2.putText(frame, "Camera rotation2:", (5, 278), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
             cv2.putText(frame, display_text3, (5, 298), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
 
+        new_frame_time = time.time()
+        fps = 1 / (new_frame_time - prev_frame_time)
+        prev_frame_time = new_frame_time
+        fps = str(int(fps))
+        cv2.putText(frame, fps, (7, 70), cv2.FONT_HERSHEY_SIMPLEX, 3, (100, 255, 0), 3, cv2.LINE_AA)
+
         # Update the output image
         cv2.imshow("Preview", frame)
         rval, frame = vc.read()
@@ -492,7 +508,7 @@ if __name__ == '__main__':
     #estimate_markers_pose_on_image(cv2.imread(r'C:\Users\micha\Pulpit\Test_aruco\WIN_20221111_19_41_15_Pro.jpg'), 100, mtx, dist)
 
     test_estimate_markers_pose_on_video(0, 105, mtx, dist, show_values=True, show_ids=True, src_res=(1280, 720))
-    #estimate_markers_pose_on_video(r"C:\Users\micha\Pulpit\Rover.mov", 100, mtx, dist, show_values=True, show_ids=True, src_res=(1280, 720))
+    #estimate_camera_pose_on_video(105, mtx, dist, resolution=(1280, 720))
 
 
     #estimate_camera_pose_on_video(100, mtx, dist, 0, resolution=(1280, 720))
@@ -503,5 +519,5 @@ if __name__ == '__main__':
     # image = cv2.imread('images\\test_images\\camera_pos_test_3.jpg')
     # estimate_camera_pose_on_image(image, 26.5, mtx, dist, dict_name=None, disp=True)
 
-# TODO: Upewnić się co ma zwracać funkcja 'estimate_pose_on_image()'
+# TODO: Ogarnąć czemu estymacja pozycji kamery jest taka słaba
 # TODO: Sprawdzć czas miedzy obrazem w gray scale a kolorowym
