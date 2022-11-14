@@ -96,7 +96,7 @@ def rotation_matrix_to_euler_angles(rot_mtx: np.ndarray) -> np.array:
     return np.array([x_rot, y_rot, z_rot])
 
 
-def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, float], cam_mtx: np.ndarray, dist_coefs: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_values: bool = False, show_ids: bool = False, show_axis: bool = True, return_final: bool = False, prev_res: Optional[Tuple[int, int]] = None) -> Tuple[np.ndarray, Tuple, np.ndarray, np.ndarray, np.ndarray]:
+def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, float], cam_mtx: np.ndarray, dist_coefs: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_values: bool = True, show_ids: bool = False, show_axis: bool = True, return_final: bool = False, prev_res: Optional[Tuple[int, int]] = None) -> Tuple[np.ndarray, Tuple, np.ndarray, np.ndarray, np.ndarray]:
     """Estimates the position of each individual marker on the image.
 
     Markers must be of the same size and type in order to assess their position correctly.
@@ -173,7 +173,7 @@ def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, flo
 
     if disp:
         # Display the final image
-        cv2.imshow("Detection result", image)
+        cv2.imshow("Estimation result", image)
         cv2.waitKey(0)
 
     return image, corners_list, ids, np.array(rvec_list), np.array(tvec_list)
@@ -227,7 +227,7 @@ def estimate_markers_pose_on_video(source: Union[str, int], marker_len: Union[in
     cv2.destroyAllWindows()
 
 
-def estimate_camera_pose_on_image(image: np.ndarray, marker_len: Union[int, float], cam_mtx: np.ndarray, dist_coefs: np.array, dict_name: Optional[str] = None, disp: bool = True, show_values: bool = False, show_id: bool = False, show_axis: bool = True, return_final: bool = False, prev_res: Optional[Tuple[int, int]] = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def estimate_camera_pose_on_image(image: np.ndarray, marker_len: Union[int, float], cam_mtx: np.ndarray, dist_coefs: np.ndarray, dict_name: Optional[str] = None, disp: bool = False, show_values: bool = True, show_id: bool = False, show_axis: bool = True, return_final: bool = False, prev_res: Optional[Tuple[int, int]] = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Estimates the camera position using single ArUco marker on the image.
 
     Args:
@@ -248,43 +248,76 @@ def estimate_camera_pose_on_image(image: np.ndarray, marker_len: Union[int, floa
 
     """
     # Detect aruco markers
-    corners_list, _, _ = detect_on_image(image=image, dict_name=dict_name, disp=False)
+    corners_list, ids, _ = detect_on_image(image=image, dict_name=dict_name, disp=False)
 
-    num_markers = len(corners_list)
+    rvec, tvec = [], []
+
+    num_markers_detected = len(corners_list)
     # Check how many markers were detected
-    if num_markers == 1:
-        R_flip = np.zeros((3, 3), dtype=np.float32)
-        R_flip[0, 0] = 1.0
-        R_flip[1, 1] = -1.0
-        R_flip[2, 2] = -1.0
-
-        # Estimate pose of each marker and return the values rvec and tvec
+    if num_markers_detected:
+        # Estimate pose of the first detected marker to obtain rotation and translation vector
         rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(corners_list[0], marker_len, mtx, dist)
-        # Draw a square around the markers
-        cv2.aruco.drawDetectedMarkers(image, corners_list)
-        # Draw axis of the marker
-        cv2.aruco.drawAxis(image, mtx, dist, rvec, tvec, marker_len/2)
-        # Obtain the rotation matrix tag->camera
-        R_ct = np.matrix(cv2.Rodrigues(rvec)[0])
-        R_tc = R_ct.T
-        # Get position and attitude of rhe camera respt to the marker
-        pos_camera = -R_tc*np.matrix(tvec).T
-        roll_camera, pitch_camera, yaw_camera = rotation_matrix_to_euler_angles(R_flip*R_tc)
-        # Display actual number of saved images
-        display_text = f"Camera position:\n X = {pos_camera[0]}   Y = {pos_camera[1]}   Z = {pos_camera[2]}"
-        cv2.putText(image, display_text, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
-        display_text = f"Camera rotation:\n R = {roll_camera}   P = {pitch_camera}   Y = {yaw_camera}"
-        cv2.putText(image, display_text, (5, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
-    elif num_markers > 1:
-        # Draw a square around the markers
-        cv2.aruco.drawDetectedMarkers(image, corners_list)
+        # Prepare the final image
+        if disp or return_final:
+            rvec = rvec[0][0]
+            tvec = tvec[0][0]
+
+            # Draw a square around the first detected marker
+            if show_id:
+                cv2.aruco.drawDetectedMarkers(image, [corners_list[0]], ids[0])
+            else:
+                cv2.aruco.drawDetectedMarkers(image, [corners_list[0]])
+
+            # Draw axis of the first detected marker
+            if show_axis:
+                cv2.aruco.drawAxis(image, cam_mtx, dist_coefs, rvec, tvec, marker_len/2)
+
+            if show_values:
+                # Obtain the inverse (in this case == transpose) of rotation matrix
+                rot_mtx_t = np.transpose(cv2.Rodrigues(rvec)[0])
+                # Get euler angles respect to the marker
+                rcam = rotation_matrix_to_euler_angles(rot_mtx_t)
+                # Get camera position respect to the marker
+                pcam = -rot_mtx_t * np.matrix(tvec).T
+
+                # Text to display
+                if num_markers_detected > 1:
+                    disp_text1 = " - Many markers detected. Estimation based on marker {} - ".format(ids[0])
+                else:
+                    disp_text1 = " - Estimation based on detected marker - "
+                disp_text2 = "X = {} Y = {} Z = {}".format(int(pcam[0]/10), int(pcam[1]/10), int(pcam[2]/10))
+                disp_text3 = "R = {:.0f} P = {:.0f} Y = {:.0f}".format(degrees(rcam[0]), degrees(rcam[1]), degrees(rcam[2]))
+
+                # Draw rotation and translation values on the image
+                cv2.putText(image, disp_text1, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+                cv2.putText(image, "Camera position [cm]:", (5, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+                cv2.putText(image, disp_text2, (5, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+                cv2.putText(image, "Camera rotation [deg]:", (5, 78), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+                cv2.putText(image, disp_text3, (5, 98), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+
+            # Resize final image
+            if prev_res is not None and prev_res[0] > 0 and prev_res[1] > 0:
+                image = cv2.resize(image, prev_res)
 
     else:
-        pass
+        if show_values:
+            display_text1 = " - No marker detected - "
+            display_text2 = "X = ? Y = ? Z = ?"
+            display_text3 = "R = ? P = ? Y = ?"
+
+            cv2.putText(image, display_text1, (5, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+            cv2.putText(image, "Camera position [cm]:", (5, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+            cv2.putText(image, display_text2, (5, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+            cv2.putText(image, "Camera rotation [deg]:", (5, 78), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+            cv2.putText(image, display_text3, (5, 98), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+
+        # Resize final image
+        if prev_res is not None and prev_res[0] > 0 and prev_res[1] > 0:
+            image = cv2.resize(image, prev_res)
 
     if disp:
-        # Show the output image
-        cv2.imshow("Detection result", image)
+        # Display the final image
+        cv2.imshow("Estimation result", image)
         cv2.waitKey(0)
 
     return image, rvec, tvec
@@ -455,20 +488,37 @@ def test_estimate_markers_pose_on_video(source: Union[str, int], marker_len: Uni
             display_text2 = f"X = {int(tvec[0])}   Y = {int(tvec[1])}   Z = {int(tvec[2])}"
             display_text3 = f"R = {int(degrees(rot_cam[0]))}   P = {int(degrees(rot_cam[1]))}   Y = {int(degrees(rot_cam[2]))}"
 
-
             cv2.putText(frame, "Marker position:", (500, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
             cv2.putText(frame, display_text2, (500, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
             cv2.putText(frame, "Marker rotation:", (500, 78), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
             cv2.putText(frame, display_text3, (500, 98), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
 
+            R_flip = np.zeros((3, 3), dtype=np.float32)
+            R_flip[0, 0] = 1.0
+            R_flip[1, 1] = -1.0
+            R_flip[2, 2] = -1.0
+
+            # Obtain the rotation matrix tag->camera
+            R_ct = np.matrix(cv2.Rodrigues(rvec)[0])
+            R_tc = R_ct.T
+            # Get position and attitude of rhe camera respt to the marker
+            pos_cam = -R_tc * np.matrix(tvec).T
+            roll, pitch, yaw = rotation_matrix_to_euler_angles(R_flip * R_tc)
+            rot_cam = [roll, pitch, yaw]
+            display_text2 = f"X = {int(pos_cam[0])}   Y = {int(pos_cam[1])}   Z = {int(pos_cam[2])}"
+            display_text3 = f"R = {int(degrees(rot_cam[0]))}   P = {int(degrees(rot_cam[1]))}   Y = {int(degrees(rot_cam[2]))}"
+
+            cv2.putText(frame, "Camera position:", (5, 38), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+            cv2.putText(frame, display_text2, (5, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+            cv2.putText(frame, "Camera rotation:", (5, 78), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+            cv2.putText(frame, display_text3, (5, 98), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
+
             pos_cam = -rotation_matrix_t * np.matrix(tvec).T
-            print(pos_cam)
             roll, pitch, yaw = rotation_matrix_to_euler_angles(rotation_matrix_t)
             # Get position and attitude of rhe camera respt to the marker
             rot_cam = [roll, pitch, yaw]
             display_text2 = f"X = {int(pos_cam[0])}   Y = {int(pos_cam[1])}   Z = {int(pos_cam[2])}"
             display_text3 = f"R = {int(degrees(rot_cam[0]))}   P = {int(degrees(rot_cam[1]))}   Y = {int(degrees(rot_cam[2]))}"
-
 
             cv2.putText(frame, "Camera position2:", (5, 238), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
             cv2.putText(frame, display_text2, (5, 258), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (98, 209, 117), 2)
@@ -493,21 +543,23 @@ def test_estimate_markers_pose_on_video(source: Union[str, int], marker_len: Uni
     vc.release()
     cv2.destroyAllWindows()
 
+
 if __name__ == '__main__':
 
     mtx, dist = load_coefficients('calibration_chess_1280x720.yml')
 
-    # import pathlib
-    # path = r'C:\Users\micha\Pulpit\Test_aruco'
-    # img_dir = pathlib.Path(path)
-    # # Find the ArUco markers inside each image
-    # for img in img_dir.glob(f'*.jpg'):  # Tu trzeba dać sprawdzanie czy ta lokalizacja nie będzie pusta
-    #     image = cv2.imread(str(img))
-    #     estimate_markers_pose_on_image(image, 100, mtx, dist, disp=True)
+    import pathlib
+    path = r'C:\Users\micha\Pulpit\Test_aruco'
+    img_dir = pathlib.Path(path)
+    # Find the ArUco markers inside each image
+    for img in img_dir.glob(f'*.jpg'):  # Tu trzeba dać sprawdzanie czy ta lokalizacja nie będzie pusta
+        image = cv2.imread(str(img))
+        #estimate_markers_pose_on_image(image, 100, mtx, dist, disp=True)
+        estimate_markers_pose_on_image(image, 105, mtx, dist, disp=True)
     # estimate_markers_pose_on_image(cv2.imread(r'C:\Users\micha\Pulpit\Test_aruco\WIN_20221111_20_03_22_Pro.jpg'), 100, mtx, dist, disp=True)
     #estimate_markers_pose_on_image(cv2.imread(r'C:\Users\micha\Pulpit\Test_aruco\WIN_20221111_19_41_15_Pro.jpg'), 100, mtx, dist)
-
-    test_estimate_markers_pose_on_video(0, 105, mtx, dist, show_values=True, show_ids=True, src_res=(1280, 720))
+    #estimate_markers_pose_on_video(0, 105, mtx, dist, show_values=True, show_ids=True, src_res=(1280, 720))
+    #test_estimate_markers_pose_on_video(0, 105, mtx, dist, show_values=True, show_ids=True, src_res=(1280, 720))
     #estimate_camera_pose_on_video(105, mtx, dist, resolution=(1280, 720))
 
 
