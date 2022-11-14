@@ -472,5 +472,5 @@ if __name__ == '__main__':
     #     #estimate_markers_pose_on_image(image, 100, mtx, dist, disp=True)
     #     estimate_markers_pose_on_image(image, 105, mtx, dist, disp=True)
     #estimate_markers_pose_on_video(0, 105, mtx, dist, show_values=True, show_ids=True, src_res=(1280, 720))
-    marker_and_camera_pose_on_video(0, 105, mtx, dist, src_res=(1280, 720))
-    #estimate_camera_pose_on_video(0, 105, mtx, dist, src_res=(1280, 720))
+    marker_and_camera_pose_on_video(0, 105, mtx, dist, "DICT_4X4_1000", src_res=(1280, 720))
+    #estimate_camera_pose_on_video(0, 105, mtx, dist, "DICT_5X5_100", src_res=(1280, 720))
