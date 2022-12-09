@@ -499,49 +499,49 @@ if __name__ == '__main__':
     # dst = cv2.undistort(original, mtx, dist, None, mtx)
     # cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
 
-    # get_charuco_calimgs(board_size=(5, 5), dict_name="DICT_4X4_50", resolution=(1280, 720), n_max=50, path="C:/Users/micha/Pulpit/test", min_time_inter=0.5)
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("C:/Users/micha/Pulpit/test", "DICT_4X4_50", (5, 5), 23, 30)
+    #get_charuco_calimgs(board_size=(5, 5), dict_name="DICT_4X4_50", resolution=(1280, 720), n_max=50, path="C:/Users/micha/Pulpit/test", min_time_inter=0.5)
+    ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("images/calibration_images/charuco", "DICT_5X5_50", (7, 5), 23, 30, "png")
+    print(f"ret:\n{ret}\n")
+    print(f"Camera matrix:\n{mtx}\n")
+    print(f"Distortion coefficients:\n{dist}\n")
+    print(f"Rotation vectors:\n{rvecs}\n")
+    print(f"Translation vectors:\n{tvecs}\n")
+    print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # Save coefficients into a file
+    save_coefficients(mtx, dist, "calib_charuco_realsense_1280x720.yml")
+
+    #get_aruco_calimgs(board_size=(5, 7), dict_name="DICT_6X6_1000", resolution=(1280, 720), n_max=50, path="images/calibration_images/aruco", min_time_inter=0.5)
+    ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images/calibration_images/aruco", "DICT_6X6_50", (5, 7), 26, 3, "png")
     # print(f"ret:\n{ret}\n")
-    # print(f"Camera matrix:\n{mtx}\n")
+    print(f"Camera matrix:\n{mtx}\n")
     # print(f"Distortion coefficients:\n{dist}\n")
     # print(f"Rotation vectors:\n{rvecs}\n")
     # print(f"Translation vectors:\n{tvecs}\n")
-    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calibration_charuco20.yml")
+    print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # Save coefficients into a file
+    save_coefficients(mtx, dist, "calib_aruco_realsense_1280x720.yml")
 
-    # get_aruco_calimgs(board_size=(5, 7), dict_name="DICT_6X6_1000", resolution=(1280, 720), n_max=50, path="images/calibration_images/aruco", min_time_inter=0.5)
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images/calibration_images/aruco", "DICT_6X6_1000", (5, 7), 26, 3)
-    # # print(f"ret:\n{ret}\n")
-    # print(f"Camera matrix:\n{mtx}\n")
-    # # print(f"Distortion coefficients:\n{dist}\n")
-    # # print(f"Rotation vectors:\n{rvecs}\n")
-    # # print(f"Translation vectors:\n{tvecs}\n")
-    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calibration_aruco_1280x720.yml")
-
-    # get_chess_calimgs(board_size=(8, 7), resolution=(1280, 720), n_max=50, path="images/calibration_images/chess", min_time_inter=0.5)
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images/calibration_images/chess", (8, 7), 24)
-    # # print(f"ret:\n{ret}\n")
-    # print(f"Camera matrix:\n{mtx}\n")
-    # # print(f"Distortion coefficients:\n{dist}\n")
-    # # print(f"Rotation vectors:\n{rvecs}\n")
-    # # print(f"Translation vectors:\n{tvecs}\n")
-    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calibration_chess_1280x720.yml")
+    #get_aruco_calimgs(board_size=(7, 5), dict_name="DICT_6X6_50", source=2, resolution=(1280, 720), n_max=100, path="images/calibration_images/aruco", image_format="png", min_time_inter=1)
+    ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images/calibration_images/chess", (6, 9), 30, "png")
+    # print(f"ret:\n{ret}\n")
+    print(f"Camera matrix:\n{mtx}\n")
+    # print(f"Distortion coefficients:\n{dist}\n")
+    # print(f"Rotation vectors:\n{rvecs}\n")
+    # print(f"Translation vectors:\n{tvecs}\n")
+    print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
+    # Save coefficients into a file
+    save_coefficients(mtx, dist, "calib_chess_realsense_1280x720.yml")
 
     # Load coefficients
-    base = cv2.imread('images/test_images/Webcam sample 1280x720.jpg')
-    cv2.imshow("Oryginał", base)
-    for file in ["calibration_charuco_1280x720.yml", "calibration_aruco_1280x720.yml", "calibration_chess_1280x720.yml"]:
-        mtx, dist = load_coefficients(file)
-        undst = cv2.undistort(base, mtx, dist, None, mtx)
-        cv2.imshow(file, undst)
-        #cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
-
-    cv2.waitKey(0)
+    # base = cv2.imread('images/test_images/Webcam sample 1280x720.jpg')
+    # cv2.imshow("Oryginał", base)
+    # for file in ["calibration_charuco_1280x720.yml", "calibration_aruco_1280x720.yml", "calibration_chess_1280x720.yml"]:
+    #     mtx, dist = load_coefficients(file)
+    #     undst = cv2.undistort(base, mtx, dist, None, mtx)
+    #     cv2.imshow(file, undst)
+    #     #cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
+    #
+    # cv2.waitKey(0)
 
 # TODO: Print logi sygnalizujące obecny stan wykonywania kalibracji
 # TODO: Stworzyć test sprawdzający jakość kalibracji

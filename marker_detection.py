@@ -339,12 +339,12 @@ def draw_dict_on_image(image: np.ndarray, det_type: str, dict_name: str) -> np.n
 
 if __name__ == '__main__':
     # Load the input image fom disk
-    # path = 'images\\test_images\\test5.jpg'
+    # path = r'C:\Users\micha\Pulpit\Studia\E-learning\Semestr 7\Projekt dyplomowy\Grafika\tablica_charuco_color.png'
     # dict = "DICT_4X4_50"
     # image = cv2.imread(path)
-
-    #detect_on_image(image, disp=True, show_rejected=False, show_dict=True, preview_resolution=(1400, 700))
+    #
+    # detect_on_image(image, disp=True, show_rejected=False, show_dict=True)
     #detect_on_video("C:\\Users\\micha\\Pulpit\\Życie prywatne\\Filmy\\Drift1.mp4", "DICT_4X4_50", show_rejected=True)
-    detect_on_video(0, resolution=(1400, 700))
+    detect_on_video("D:/Wideo/Intel RealSense/Chessboard_video.bag", resolution=(1280, 720))
 
 # TODO: Dodoać argparsera z możliwością wyboru danej funkcji
