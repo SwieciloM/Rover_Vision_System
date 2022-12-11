@@ -345,6 +345,6 @@ if __name__ == '__main__':
     #
     # detect_on_image(image, disp=True, show_rejected=False, show_dict=True)
     #detect_on_video("C:\\Users\\micha\\Pulpit\\Życie prywatne\\Filmy\\Drift1.mp4", "DICT_4X4_50", show_rejected=True)
-    detect_on_video("D:/Wideo/Intel RealSense/Chessboard_video.bag", resolution=(1280, 720))
+    detect_on_video(2, resolution=(1280, 720))
 
 # TODO: Dodoać argparsera z możliwością wyboru danej funkcji

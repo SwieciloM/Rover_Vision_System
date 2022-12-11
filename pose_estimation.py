@@ -461,7 +461,7 @@ def marker_and_camera_pose_on_video(source: Union[str, int], marker_len: Union[i
 
 if __name__ == '__main__':
     # Load calibration data
-    mtx, dist = load_coefficients('calibration_chess_1280x720.yml')
+    mtx, dist = load_coefficients('calib_chess_realsense_1280x720.yml')
 
     # import pathlib
     # path = r'C:\Users\micha\Pulpit\Test_aruco'
@@ -472,5 +472,6 @@ if __name__ == '__main__':
     #     #estimate_markers_pose_on_image(image, 100, mtx, dist, disp=True)
     #     estimate_markers_pose_on_image(image, 105, mtx, dist, disp=True)
     #estimate_markers_pose_on_video(0, 105, mtx, dist, show_values=True, show_ids=True, src_res=(1280, 720))
-    marker_and_camera_pose_on_video(0, 105, mtx, dist, "DICT_4X4_1000", src_res=(1280, 720))
+    #estimate_markers_pose_on_image(cv2.imread("images/test_images/450 0_Color.png"), 150, mtx, dist, "DICT_4X4_50", True)
+    marker_and_camera_pose_on_video(2, 150, mtx, dist, "DICT_4X4_50", src_res=(1280, 720))
     #estimate_camera_pose_on_video(0, 105, mtx, dist, "DICT_5X5_100", src_res=(1280, 720))

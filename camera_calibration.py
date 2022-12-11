@@ -496,6 +496,53 @@ def get_charuco_calimgs(board_size: Tuple[float, float], dict_name: Optional[str
     cv2.destroyAllWindows()
 
 
+def calculate_reprojected_error(path: str, board_size: Tuple[int, int], square_len: Union[int, float], image_format: str = 'jpg'):
+    """Calibrate a camera using chessboard images."""
+    # Termination criteria
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+    # Inner size (height, width)
+    isize = (board_size[0] - 1, board_size[1] - 1)
+
+    # Object points, like (0,0,0), (1,0,0), (2,0,0) ..., (8,6,0)
+    objp = np.zeros((isize[0]*isize[1], 3), np.float32)
+    objp[:, :2] = np.mgrid[0:isize[1], 0:isize[0]].T.reshape(-1, 2)
+    objp = objp * square_len  # Meter is a better metric
+
+    # Arrays to store object points and image points from all the images.
+    objp_list = []  # 3d point in real world space
+    imgp_list = []  # 2d points in image plane
+
+    images = pathlib.Path(path).glob(f'*.{image_format}')
+    # Iterate through all images
+    for fname in images:
+        # Reading image and conversion to grayscale
+        image = cv2.imread(str(fname))
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Find the chess board corners
+        ret, chess_corners = cv2.findChessboardCorners(gray, (isize[1], isize[0]), None)
+
+        # If found, collect object points and image points (after refining them)
+        if ret:
+            objp_list.append(objp)
+            subpix_corners = cv2.cornerSubPix(gray, chess_corners, (11, 11), (-1, -1), criteria)
+            imgp_list.append(subpix_corners)
+
+    if len(objp_list):
+        # Calibrate camera
+        results = cv2.calibrateCameraExtended(objp_list, imgp_list, gray.shape[::-1], None, None)
+        ret, mtx, dist, rvecs, tvecs, _, _, error = results
+
+    mean_error = 0
+    for i in range(len(objp_list)):
+        imgpoints2, _ = cv2.projectPoints(objp_list[i], rvecs[i], tvecs[i], mtx, dist)
+        error = cv2.norm(imgp_list[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
+        mean_error += error
+
+    return mean_error/len(objp_list)
+
+
 if __name__ == '__main__':
     # Load coefficients
     # mtx, dist = load_coefficients('calibration_chess.yml')
@@ -504,42 +551,51 @@ if __name__ == '__main__':
     # cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
 
     #get_charuco_calimgs(board_size=(5, 5), dict_name="DICT_4X4_50", resolution=(1280, 720), n_max=50, path="C:/Users/micha/Pulpit/test", min_time_inter=0.5)
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("images/calibration_images/charuco", "DICT_5X5_50", (7, 5), 23, 30, "png")
+    # ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("images/calibration_images/charuco", "DICT_5X5_50", (5, 7), 23, 30, "png")
     # print(f"ret:\n{ret}\n")
     # print(f"Camera matrix:\n{mtx}\n")
     # print(f"Distortion coefficients:\n{dist}\n")
     # print(f"Rotation vectors:\n{rvecs}\n")
     # print(f"Translation vectors:\n{tvecs}\n")
     # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # # Save coefficients into a file
+    # Save coefficients into a file
     # save_coefficients(mtx, dist, "calib_charuco_realsense_1280x720.yml")
 
     #get_aruco_calimgs(board_size=(5, 7), dict_name="DICT_6X6_1000", resolution=(1280, 720), n_max=50, path="images/calibration_images/aruco", min_time_inter=0.5)
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images/calibration_images/aruco", "DICT_6X6_50", (5, 7), 26, 3, "png")
+    # ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images/calibration_images/aruco", "DICT_6X6_50", (7, 5), 26, 3, "png")
     # print(f"ret:\n{ret}\n")
     # print(f"Camera matrix:\n{mtx}\n")
     # print(f"Distortion coefficients:\n{dist}\n")
     # print(f"Rotation vectors:\n{rvecs}\n")
     # print(f"Translation vectors:\n{tvecs}\n")
     # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # # Save coefficients into a file
+    # Save coefficients into a file
     # save_coefficients(mtx, dist, "calib_aruco_realsense_1280x720.yml")
 
     #get_aruco_calimgs(board_size=(7, 5), dict_name="DICT_6X6_50", source=2, resolution=(1280, 720), n_max=100, path="images/calibration_images/aruco", image_format="png", min_time_inter=1)
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images/calibration_images/chess", (6, 9), 30, "png")
+    # ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images/calibration_images/chess/TestUltimate", (6, 9), 30, "png")
     # print(f"ret:\n{ret}\n")
     # print(f"Camera matrix:\n{mtx}\n")
     # print(f"Distortion coefficients:\n{dist}\n")
-    # print(f"Rotation vectors:\n{rvecs}\n")
-    # print(f"Translation vectors:\n{tvecs}\n")
+    # # print(f"Rotation vectors:\n{rvecs}\n")
+    # # print(f"Translation vectors:\n{tvecs}\n")
     # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
     # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calib_chess_realsense_1280x720.yml")
+    # save_coefficients(mtx, dist, "test4.yml")
+
+    # # Load coefficients
+    # base = cv2.imread('images/calibration_images/chess/chess_calib_1.png')
+    # cv2.imshow("Oryginał", base)
+    # for file in ["calib_charuco_realsense_1280x720.yml", "calib_aruco_realsense_1280x720.yml", "calib_chess_realsense_1280x720.yml"]:
+    #     mtx, dist = load_coefficients(file)
+    #     undst = cv2.undistort(base, mtx, dist, None, mtx)
+    #     cv2.imshow(file, undst)
+    #     #cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
 
     # Load coefficients
     base = cv2.imread('images/calibration_images/chess/chess_calib_1.png')
     cv2.imshow("Oryginał", base)
-    for file in ["calib_charuco_realsense_1280x720.yml", "calib_aruco_realsense_1280x720.yml", "calib_chess_realsense_1280x720.yml"]:
+    for file in ["calib_chess_realsense_1280x720.yml", "test4.yml", "test3.yml"]:
         mtx, dist = load_coefficients(file)
         undst = cv2.undistort(base, mtx, dist, None, mtx)
         cv2.imshow(file, undst)
