@@ -464,18 +464,15 @@ def marker_and_camera_pose_on_video(source: Union[str, int], marker_len: Union[i
 
 
 if __name__ == '__main__':
-    # Load calibration data
-    mtx, dist = load_coefficients('calib_chess_webcam_1280x720.yml')
+    # These are examples of how to use some functions. Uncomment and complete the data to run the program #
 
-    # import pathlib
-    # path = r'C:\Users\micha\Pulpit\Test_aruco'
-    # img_dir = pathlib.Path(path)
-    # # Find the ArUco markers inside each image
-    # for img in img_dir.glob(f'*.jpg'):  # Tu trzeba dać sprawdzanie czy ta lokalizacja nie będzie pusta
-    #     image = cv2.imread(str(img))
-    #     #estimate_markers_pose_on_image(image, 100, mtx, dist, disp=True)
-    #     estimate_markers_pose_on_image(image, 105, mtx, dist, disp=True)
-    #estimate_markers_pose_on_video(0, 100, mtx, dist, show_values=True, show_ids=False, src_res=(1280, 720))
-    #estimate_markers_pose_on_image(cv2.imread("images/test_images/450 0_Color.png"), 150, mtx, dist, "DICT_4X4_50", True)
-    #marker_and_camera_pose_on_video(0, 100, mtx, dist, "DICT_4X4_250", src_res=(1280, 720))
-    estimate_camera_pose_on_video(0, 100, mtx, dist, "DICT_4X4_100", src_res=(1280, 720))
+    # --- Estimate ArUco marker position and orientation on the video source --- #
+    param_path = "calib_params.yml"  # Path and name of the .yml file with calibration parameters
+    src = 0  # Number of camera feed
+    res = (1280, 720)  # Resolution of the camera for which the calibration was performed
+    mark_len = 20  # Physical side length of a single marker in mm
+    dict = "DICT_4X4_50"  # Dictionary name of Aruco marker from constants.py or "None"
+    mtx, dist = load_coefficients(param_path)  # Load calibration parameters
+    estimate_markers_pose_on_video(source=src, marker_len=mark_len, cam_mtx=mtx, dist_coefs=dist, dict_name=dict, src_res=res)
+
+    pass

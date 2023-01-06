@@ -544,79 +544,38 @@ def calculate_reprojected_error(path: str, board_size: Tuple[int, int], square_l
 
 
 if __name__ == '__main__':
-    # Load coefficients
-    # mtx, dist = load_coefficients('calibration_chess.yml')
-    # original = cv2.imread('images\\calibration_images\\calib50.jpg')
-    # dst = cv2.undistort(original, mtx, dist, None, mtx)
-    # cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
+    # These are examples of how to use some functions. Uncomment and complete the data to run the program #
 
-    #get_charuco_calimgs(board_size=(5, 5), dict_name="DICT_4X4_50", resolution=(1280, 720), n_max=50, path="C:/Users/micha/Pulpit/test", min_time_inter=0.5)
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_charuco("images/calibration_images/charuco", "DICT_5X5_50", (5, 7), 23, 30, "png")
-    # print(f"ret:\n{ret}\n")
-    # print(f"Camera matrix:\n{mtx}\n")
-    # print(f"Distortion coefficients:\n{dist}\n")
-    # print(f"Rotation vectors:\n{rvecs}\n")
-    # print(f"Translation vectors:\n{tvecs}\n")
-    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calib_charuco_realsense_1280x720.yml")
+    # --- Calibrate camera using ChArUco board --- #
+    src = 0  # Number of camera feed
+    check_supported_resolutions(source=src)  # Get all supported camera resolutions and then choose one from it
+    res = (1280, 720)  # Resolution of the camera for which the calibration will be performed
+    size = (5, 5)  # ChArUco board shape (number of rows and columns)
+    mark_len = 20  # Physical side length of a single marker in mm
+    squa_len = 20  # Physical side length of a single black square in mm
+    dict = "DICT_4X4_50"  # Dictionary name of Aruco marker from constants.py or "None"
+    n_pic = 20  # Number of pictures to capture for the calibration
+    pict_path = ""  # Path to the folder where calibration pictures will be stored
+    param_path = "calib_params.yml"  # Path and name of the file with .yml extension for the calibration parameters
+    get_charuco_calimgs(board_size=size, dict_name=dict, resolution=res, n_max=n_pic, path=pict_path)  # Get pictures
+    _, mtx, dist, *_ = calibrate_charuco(path=pict_path, dict_name=dict, board_size=(5, 7), marker_len=mark_len, square_len=squa_len)
+    print("Camera matrix:\n {} \nDistortion coefficients:\n {} \n".format(mtx, dist))  # Print calibration results
+    save_coefficients(mtx=mtx, dist=dist, path=param_path)  # Save calibration parameters into selected file
 
-    #get_aruco_calimgs(board_size=(5, 7), dict_name="DICT_6X6_1000", resolution=(1280, 720), n_max=50, path="images/calibration_images/aruco", min_time_inter=0.5)
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_aruco("images/calibration_images/aruco", "DICT_6X6_50", (7, 5), 26, 3, "png")
-    # print(f"ret:\n{ret}\n")
-    # print(f"Camera matrix:\n{mtx}\n")
-    # print(f"Distortion coefficients:\n{dist}\n")
-    # print(f"Rotation vectors:\n{rvecs}\n")
-    # print(f"Translation vectors:\n{tvecs}\n")
-    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # Save coefficients into a file
-    # save_coefficients(mtx, dist, "calib_aruco_realsense_1280x720.yml")
+    # --- Check results of the calibration on the undistorted image --- #
+    test_photo_path = ""  # Image path with file extension name
+    original = cv2.imread(test_photo_path)  # Load the input image from disk
+    cv2.imshow("Widok oryginalnego obrazu", original)  # Display the distorted image
+    mtx, dist = load_coefficients(param_path)  # Load calibration parameters
+    undistorted = cv2.undistort(original, mtx, dist, None, mtx)  # Undistort image using calibration parameters
+    cv2.imshow("Widok obrazu z usunietymi znieksztalceniami", undistorted)  # Display the undistorted image
+    cv2.waitKey(0)  # Don't close until any key pressed
 
-    #get_aruco_calimgs(board_size=(7, 5), dict_name="DICT_6X6_50", source=2, resolution=(1280, 720), n_max=100, path="images/calibration_images/aruco", image_format="png", min_time_inter=1)
-    # print(calculate_reprojected_error("images/calibration_images/chess/Test3", (6, 9), 30, "png"))
-    # ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images/calibration_images/chess/TestUltimate", (6, 9), 30, "png")
-    # print(f"ret:\n{ret}\n")
-    # print(f"Camera matrix:\n{mtx}\n")
-    # print(f"Distortion coefficients:\n{dist}\n")
-    # # print(f"Rotation vectors:\n{rvecs}\n")
-    # # print(f"Translation vectors:\n{tvecs}\n")
-    # print(f"Average re-projection error:\n{sum(error)/len(error)}\n")
-    # # Save coefficients into a file
-    # save_coefficients(mtx, dist, "test4.yml")
-
-    # Load coefficients
-    base = cv2.imread('C:/Users/micha/Pulpit/zdjecie_kalib.png')
-    cv2.imshow("Oryginał", base)
-    for file in ["calib_chess_realsense_1280x720.yml"]:
-        mtx, dist = load_coefficients(file)
-        undst = cv2.undistort(base, mtx, dist, None, mtx)
-        cv2.imshow(file, undst)
-        cv2.imwrite('C:/Users/micha/Pulpit/zdjecie_kalib_undistort.png', undst)
-
-
-    # Load coefficients
-    # base = cv2.imread('images/calibration_images/chess/Test3/1_Color.png')
-    # cv2.imshow("Oryginał", base)
-    # for file in ["calib_chess_realsense_1280x720.yml", "calib_aruco_realsense_1280x720.yml", "calib_charuco_realsense_1280x720.yml"]:
-    #     mtx, dist = load_coefficients(file)
-    #     undst = cv2.undistort(base, mtx, dist, None, mtx)
-    #     cv2.imshow(file, undst)
-    #     #cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
-
-    cv2.waitKey(0)
+    pass
 
 # TODO: Print logi sygnalizujące obecny stan wykonywania kalibracji
-# TODO: Stworzyć test sprawdzający jakość kalibracji
 # TODO: Uporządkować kod i dopisać komentarze/docstringi
 # TODO: Zrobić zabezpieczenia przed pustymi folderami, i zdjęciami które nie nadają się do kalibracji
-# TODO: Zrobić system sprawdzający jakość kalibracji i usuwające zjęcia negatywnie wpływające na nią
 # TODO: Naprawić funkcję kalibrującą 'calibrate_aruco()'
 # TODO: Dodoać argparsera z możliwością wyboru danej funkcji
-
 # TODO: Poprawienie sposobu zapisu wszystkich funkcji tak aby działały również na innych systemach
-
-# TODO: Optymalizacja funkcji get_charuco_calimgs
-#       Podczas detekcji tablicy na obrazie w wysokiej rozdzielczości zbyt wiele zasobów jest zużywanych na wykrycie
-#       samej szachownicy przez co wartość FPS znacząco maleje. Potencjalne  rozwiązanie to downsizing przetważanego
-#       obrazu, wykonanie na nim detekcji a następnie przeskalowanie do normalnego rozmiaru. Źródło:
-#       https://stackoverflow.com/questions/15018620/findchessboardcorners-cannot-detect-chessboard-on-very-large-images-by-long-foca/15074774#15074774

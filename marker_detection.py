@@ -338,14 +338,19 @@ def draw_dict_on_image(image: np.ndarray, det_type: str, dict_name: str) -> np.n
 
 
 if __name__ == '__main__':
-    # Load the input image fom disk
-    # path = r'C:\Users\micha\Pulpit\Studia\E-learning\Semestr 7\Projekt dyplomowy\Grafika\tablica_charuco_color.png'
-    # dict = "DICT_4X4_50"
-    # image = cv2.imread(path)
-    #
-    # detect_on_image(image, disp=True, show_rejected=False, show_dict=True)
-    #detect_on_video("C:\\Users\\micha\\Pulpit\\Życie prywatne\\Filmy\\Drift1.mp4", "DICT_4X4_50", show_rejected=True)
-    detect_on_video(0)
+    # These are examples of how to use some functions. Uncomment and complete the data to run the program #
 
+    # --- Detect Aruco marker on the single image --- #
+    # path = ""  # Image path with file extension name
+    # dict = None  # Dictionary name of Aruco marker from constants.py or "None"
+    # image = cv2.imread(path)  # Load the input image from disk
+    # detect_on_image(image, dict_name=dict, disp=True)  # Detect marker on given image
+
+    # --- Detect Aruco marker on the video source ---
+    # src = 0  # Number of camera feed or path to video file
+    # dict = None  # Dictionary name of Aruco marker from constants.py or "None"
+    # detect_on_video(source=src, dict_name=dict)
+
+    pass
 
 # TODO: Dodoać argparsera z możliwością wyboru danej funkcji
