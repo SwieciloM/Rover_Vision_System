@@ -123,49 +123,53 @@ def estimate_markers_pose_on_image(image: np.ndarray, marker_len: Union[int, flo
 
     rvec_list, tvec_list = [], []
 
-    # Loop over every detected marker's corners
-    for corners in corners_list:
-        # Estimate pose of the marker to obtain rotation and translation vectors
-        rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(corners, marker_len, cam_mtx, dist_coefs)
-        rvec_list.append(rvec)
-        tvec_list.append(tvec)
+    # Check if there are any detected markers
+    if len(corners_list):
+        # Loop over every detected marker's corners
+        for corners in corners_list:
+            # Estimate pose of the marker to obtain rotation and translation vectors
+            rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(corners, marker_len, cam_mtx, dist_coefs)
+            rvec_list.append(rvec)
+            tvec_list.append(tvec)
 
     # Prepare the final image
     if disp or ret_final:
-        # Loop over every detected marker's data
-        for corners, id, rvec, tvec in zip(corners_list, ids, rvec_list, tvec_list):
-            rvec = rvec[0][0]
-            tvec = tvec[0][0]
+        # Check if there are any detected markers
+        if len(corners_list):
+            # Loop over every detected marker's data
+            for corners, id, rvec, tvec in zip(corners_list, ids, rvec_list, tvec_list):
+                rvec = rvec[0][0]
+                tvec = tvec[0][0]
 
-            # Draw a square around detected marker
-            if show_ids:
-                cv2.aruco.drawDetectedMarkers(image, [corners], id)
-            else:
-                cv2.aruco.drawDetectedMarkers(image, [corners])
+                # Draw a square around detected marker
+                if show_ids:
+                    cv2.aruco.drawDetectedMarkers(image, [corners], id)
+                else:
+                    cv2.aruco.drawDetectedMarkers(image, [corners])
 
-            # Draw axis of the marker
-            if show_axis:
-                cv2.aruco.drawAxis(image, cam_mtx, dist_coefs, rvec, tvec, marker_len/2)
+                # Draw axis of the marker
+                if show_axis:
+                    cv2.aruco.drawAxis(image, cam_mtx, dist_coefs, rvec, tvec, marker_len/2)
 
-            if show_values:
-                # Obtain the rotation matrix to get euler angles
-                rot_mtx_t = cv2.Rodrigues(rvec)[0].T
-                roll, pitch, yaw = rotation_matrix_to_euler_angles(rot_mtx_t)
+                if show_values:
+                    # Obtain the rotation matrix to get euler angles
+                    rot_mtx_t = cv2.Rodrigues(rvec)[0].T
+                    roll, pitch, yaw = rotation_matrix_to_euler_angles(rot_mtx_t)
 
-                # Text to display
-                tra_text = "({:.0f}, {:.0f}, {:.0f})".format(tvec[0]/10, tvec[1]/10, tvec[2]/10)
-                rot_text = "({:.0f}, {:.0f}, {:.0f})".format(degrees(roll), degrees(pitch), degrees(yaw))
+                    # Text to display
+                    tra_text = "({:.0f}, {:.0f}, {:.0f})".format(tvec[0]/10, tvec[1]/10, tvec[2]/10)
+                    rot_text = "({:.0f}, {:.0f}, {:.0f})".format(degrees(roll), degrees(pitch), degrees(yaw))
 
-                # Parameters for correct text display
-                x_txt, y_txt = [int(min(i)) for i in zip(*corners[0])]
-                size_marker = [int(max(i) - min(i)) for i in zip(*corners[0])]
-                font_scale = sum(size_marker)/450
-                offset = int(size_marker[1]/10)
-                color = (19, 111, 216)
+                    # Parameters for correct text display
+                    x_txt, y_txt = [int(min(i)) for i in zip(*corners[0])]
+                    size_marker = [int(max(i) - min(i)) for i in zip(*corners[0])]
+                    font_scale = sum(size_marker)/450
+                    offset = int(size_marker[1]/10)
+                    color = (19, 111, 216)
 
-                # Draw rotation and translation values
-                cv2.putText(image, tra_text, (x_txt, y_txt+4*offset), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2)
-                cv2.putText(image, rot_text, (x_txt, y_txt+7*offset), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2)
+                    # Draw rotation and translation values
+                    cv2.putText(image, tra_text, (x_txt, y_txt+4*offset), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2)
+                    cv2.putText(image, rot_text, (x_txt, y_txt+7*offset), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, 2)
 
         # Resize final image
         if prev_res is not None and prev_res[0] > 0 and prev_res[1] > 0:
@@ -461,7 +465,7 @@ def marker_and_camera_pose_on_video(source: Union[str, int], marker_len: Union[i
 
 if __name__ == '__main__':
     # Load calibration data
-    mtx, dist = load_coefficients('calib_chess_realsense_1280x720.yml')
+    mtx, dist = load_coefficients('calib_chess_webcam_1280x720.yml')
 
     # import pathlib
     # path = r'C:\Users\micha\Pulpit\Test_aruco'
@@ -471,7 +475,7 @@ if __name__ == '__main__':
     #     image = cv2.imread(str(img))
     #     #estimate_markers_pose_on_image(image, 100, mtx, dist, disp=True)
     #     estimate_markers_pose_on_image(image, 105, mtx, dist, disp=True)
-    #estimate_markers_pose_on_video(0, 105, mtx, dist, show_values=True, show_ids=True, src_res=(1280, 720))
+    #estimate_markers_pose_on_video(0, 100, mtx, dist, show_values=True, show_ids=False, src_res=(1280, 720))
     #estimate_markers_pose_on_image(cv2.imread("images/test_images/450 0_Color.png"), 150, mtx, dist, "DICT_4X4_50", True)
-    marker_and_camera_pose_on_video(2, 150, mtx, dist, "DICT_4X4_50", src_res=(1280, 720))
-    #estimate_camera_pose_on_video(0, 105, mtx, dist, "DICT_5X5_100", src_res=(1280, 720))
+    #marker_and_camera_pose_on_video(0, 100, mtx, dist, "DICT_4X4_250", src_res=(1280, 720))
+    estimate_camera_pose_on_video(0, 100, mtx, dist, "DICT_4X4_100", src_res=(1280, 720))

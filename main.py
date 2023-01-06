@@ -4,8 +4,8 @@ import numpy as np
 import cv2
 import time
 from constants import ARUCO_DICT
-from pose_estimation import is_rotation_matrix, rotation_matrix_to_euler_angles
-from camera_calibration import load_coefficients
+from pose_estimation import is_rotation_matrix, rotation_matrix_to_euler_angles, estimate_markers_pose_on_image
+from camera_calibration import *
 import cProfile, pstats, io
 from math import degrees, sqrt, atan2
 from typing import Optional, Union, Tuple
@@ -144,6 +144,61 @@ def print_hi(name):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    #print_hi('PyCharm')
+    base = cv2.imread('C:/Users/micha/Pulpit/zdjecie_kalib.png', cv2.IMREAD_GRAYSCALE)
+    base_undi = cv2.imread('C:/Users/micha/Pulpit/zdjecie_kalib_undistort.png', cv2.IMREAD_GRAYSCALE)
 
+    cv2.imshow("podglad1", base)
+    cv2.imshow("podglad2", base_undi)
+
+    cv2.waitKey(0)
+
+    # Zamiana obrazów na typ uint16
+    base_uint16 = base.astype('uint16')
+    base_undi_uint16 = base_undi.astype('uint16')
+
+    subtracted = cv2.subtract(base, base_undi)
+    subtracted_v2 = abs(base - base_undi)
+    print(max([max(i) for i in subtracted]))
+    img_normalized = cv2.normalize(subtracted, None, 0, 255, cv2.NORM_MINMAX)
+    print(img_normalized)
+    cv2.imshow("podglad3", subtracted)
+    #cv2.imwrite('C:/Users/micha/Pulpit/roznica_przed_i_po_kalibracji.png', subtracted)
+    k = np.array(subtracted/max([max(i) for i in subtracted])*255)
+    print(k.astype(np.int32).astype(np.float64))
+    cv2.imshow("podglad4", k.astype(np.int32).astype(np.float64))
+
+
+    #cv2.imshow("podglad4", subtracted_v2)
+
+    # cv2.imshow("podglad2", base_uint16)
+    # cv2.imshow("podglad4", base_undi_uint16)
+
+    cv2.waitKey(0)
+
+    # Ręczne odejmowanie obrazów jet i lena
+
+
+
+
+    # for img in ["multi_100_Color", "multi_150_Color", "multi_200_Color", "multi_250_Color", "multi_300_Color",
+    #             "multi_350_Color", "multi_400_Color", "multi_450_Color", "multi_500_Color"]:
+    #     for dict in ["DICT_4X4_50", "DICT_5X5_50", "DICT_6X6_50", "DICT_7X7_50"]:
+    #         detect_on_image(cv2.imread("images/test_images/{}.png".format(img)), dict, True)
+
+    # import csv
+    # header = ['name', 'x', 'y', 'z', 'r', 'p', 'y']
+    # with open('rotation_accuracy_data.csv', 'w', encoding='UTF8', newline='') as file:
+    #     writer = csv.writer(file)
+    #     writer.writerow(header)
+    #     mtx, dist = load_coefficients("calib_chess_realsense_1280x720.yml")
+    #     for img in ["100_rot0_Color", "100_rot15_Color", "100_rot30_Color", "100_rot45_Color", "100_rot60_Color", "500_rot0_Color", "500_rot15_Color", "500_rot30_Color", "500_rot45_Color"]:
+    #         *_, rot, pos = estimate_markers_pose_on_image(cv2.imread("images/test_images/{}.png".format(img)), 150, mtx, dist, "DICT_4X4_50", False)
+    #         print(img)
+    #         rot_mtx_t = cv2.Rodrigues(rot[0][0][0])[0].T
+    #         roll, pitch, yaw = rotation_matrix_to_euler_angles(rot_mtx_t)
+    #         pos = pos[0][0][0]
+    #         rot = [degrees(roll), degrees(pitch), degrees(yaw)]
+    #         print("pos: {}\nrot: {}\n".format(pos, rot))
+    #         writer.writerow(['{}'.format(img[:-6]), *pos, *rot])
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

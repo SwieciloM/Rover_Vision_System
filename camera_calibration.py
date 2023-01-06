@@ -573,6 +573,7 @@ if __name__ == '__main__':
     # save_coefficients(mtx, dist, "calib_aruco_realsense_1280x720.yml")
 
     #get_aruco_calimgs(board_size=(7, 5), dict_name="DICT_6X6_50", source=2, resolution=(1280, 720), n_max=100, path="images/calibration_images/aruco", image_format="png", min_time_inter=1)
+    # print(calculate_reprojected_error("images/calibration_images/chess/Test3", (6, 9), 30, "png"))
     # ret, mtx, dist, rvecs, tvecs, error = calibrate_chessboard("images/calibration_images/chess/TestUltimate", (6, 9), 30, "png")
     # print(f"ret:\n{ret}\n")
     # print(f"Camera matrix:\n{mtx}\n")
@@ -583,23 +584,24 @@ if __name__ == '__main__':
     # # Save coefficients into a file
     # save_coefficients(mtx, dist, "test4.yml")
 
-    # # Load coefficients
-    # base = cv2.imread('images/calibration_images/chess/chess_calib_1.png')
+    # Load coefficients
+    base = cv2.imread('C:/Users/micha/Pulpit/zdjecie_kalib.png')
+    cv2.imshow("Oryginał", base)
+    for file in ["calib_chess_realsense_1280x720.yml"]:
+        mtx, dist = load_coefficients(file)
+        undst = cv2.undistort(base, mtx, dist, None, mtx)
+        cv2.imshow(file, undst)
+        cv2.imwrite('C:/Users/micha/Pulpit/zdjecie_kalib_undistort.png', undst)
+
+
+    # Load coefficients
+    # base = cv2.imread('images/calibration_images/chess/Test3/1_Color.png')
     # cv2.imshow("Oryginał", base)
-    # for file in ["calib_charuco_realsense_1280x720.yml", "calib_aruco_realsense_1280x720.yml", "calib_chess_realsense_1280x720.yml"]:
+    # for file in ["calib_chess_realsense_1280x720.yml", "calib_aruco_realsense_1280x720.yml", "calib_charuco_realsense_1280x720.yml"]:
     #     mtx, dist = load_coefficients(file)
     #     undst = cv2.undistort(base, mtx, dist, None, mtx)
     #     cv2.imshow(file, undst)
     #     #cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
-
-    # Load coefficients
-    base = cv2.imread('images/calibration_images/chess/chess_calib_1.png')
-    cv2.imshow("Oryginał", base)
-    for file in ["calib_chess_realsense_1280x720.yml", "test4.yml", "test3.yml"]:
-        mtx, dist = load_coefficients(file)
-        undst = cv2.undistort(base, mtx, dist, None, mtx)
-        cv2.imshow(file, undst)
-        #cv2.imwrite('images\\calibration_images\\undist_chess.png', dst)
 
     cv2.waitKey(0)
 
