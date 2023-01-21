@@ -347,9 +347,9 @@ if __name__ == '__main__':
     # detect_on_image(image, dict_name=dict, disp=True)  # Detect marker on given image
 
     # --- Detect Aruco marker on the video source ---
-    # src = 0  # Number of camera feed or path to video file
-    # dict = None  # Dictionary name of Aruco marker from constants.py or "None"
-    # detect_on_video(source=src, dict_name=dict)
+    src = 0  # Number of camera feed or path to video file
+    dict = None  # Dictionary name of Aruco marker from constants.py or "None"
+    detect_on_video(source=src, dict_name=dict)
 
     pass
 
